@@ -1,415 +1,427 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Private WebRTC Chat</title>
-  <style>
-    /* Base styles */
-    :root {
-      --bg-color: #000000;
-      --surface-color: #1c1c1e;
-      --surface-color-2: #2c2c2e;
-      --surface-hover: #3a3a3c;
-      --primary-color: #007aff;
-      --primary-hover: #0056cc;
-      --text-primary: #ffffff;
-      --text-secondary: #8e8e93;
-      --status-connected: #30d158;
-      --status-connecting: #ff9f0a;
-      --status-disconnected: #ff453a;
-      --code-color: #00d4ff;
-      --modal-backdrop: rgba(0, 0, 0, 0.8);
-    }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <title>Private WebRTC Chat</title>
+    <style>
+        /* Base styles */
+        :root {
+            --bg-color: #000000;
+            --surface-color: #1c1c1e;
+            --surface-color-2: #2c2c2e;
+            --surface-hover: #3a3a3c;
+            --primary-color: #007aff;
+            --primary-hover: #0056cc;
+            --text-primary: #ffffff;
+            --text-secondary: #8e8e93;
+            --status-connected: #30d158;
+            --status-connecting: #ff9f0a;
+            --status-disconnected: #ff453a;
+            --code-color: #00d4ff;
+            --modal-backdrop: rgba(0, 0, 0, 0.8);
+        }
 
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-    
-    body {
-      margin: 0;
-      background: var(--bg-color);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      color: var(--text-primary);
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      height: 100dvh; /* Dynamic viewport height for mobile */
-      max-width: 500px;
-      margin: 0 auto;
-      overflow: hidden;
-    }
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            margin: 0;
+            background: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile */
+            max-width: 500px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
 
-    /* Status Bar */
-    .status-bar {
-      background: var(--surface-color);
-      padding: 8px 16px;
-      text-align: center;
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      border-bottom: 1px solid var(--surface-color-2);
-      flex-shrink: 0;
-    }
-    .status-bar span.status-connected { color: var(--status-connected); }
-    .status-bar span.status-connecting { color: var(--status-connecting); }
-    .status-bar span.status-disconnected { color: var(--status-disconnected); }
+        /* Status Bar */
+        .status-bar {
+            background: var(--surface-color);
+            padding: 8px 16px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--surface-color-2);
+            flex-shrink: 0;
+        }
+        .status-bar span.status-connected { color: var(--status-connected); }
+        .status-bar span.status-connecting { color: var(--status-connecting); }
+        .status-bar span.status-disconnected { color: var(--status-disconnected); }
 
-    /* Header */
-    header {
-      background: var(--surface-color);
-      padding: 12px 16px;
-      font-weight: 600;
-      font-size: 1.1rem;
-      text-align: center;
-      border-bottom: 1px solid var(--surface-color-2);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-shrink: 0;
-    }
+        /* Header */
+        header {
+            background: var(--surface-color);
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-align: center;
+            border-bottom: 1px solid var(--surface-color-2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
 
-    .header-btn {
-      background: none;
-      border: none;
-      color: var(--primary-color);
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 50%;
-      width: 32px;
-      height: 32px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: background-color 0.2s;
-    }
-    .header-btn:hover { background: var(--surface-color-2); }
+        .header-btn {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        .header-btn:hover { background: var(--surface-color-2); }
 
-    /* Chat Area */
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: var(--bg-color);
-      scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
-    }
+        /* Chat Area */
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: var(--bg-color);
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
 
-    .message {
-      max-width: 75%;
-      padding: 10px 14px;
-      border-radius: 18px;
-      font-size: 1rem;
-      line-height: 1.4;
-      word-wrap: break-word;
-      position: relative;
-      animation: messageSlide 0.3s ease-out;
-    }
-    @keyframes messageSlide {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .message.me {
-      background: var(--primary-color);
-      align-self: flex-end;
-      color: white;
-      border-bottom-right-radius: 4px;
-      padding-right: 30px; /* Space for status indicator */
-    }
-    .message.other {
-      background: var(--surface-color-2);
-      color: var(--text-primary);
-      align-self: flex-start;
-      border-bottom-left-radius: 4px;
-    }
-    .message.system {
-        align-self: center;
-        background: var(--surface-color);
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        text-align: center;
-        border-radius: 12px;
-    }
-    .message img {
-      max-width: 100%;
-      max-height: 300px;
-      border-radius: 12px;
-      cursor: pointer;
-      object-fit: cover;
-      display: block;
-    }
+        .message {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 1rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+            position: relative;
+            animation: messageSlide 0.3s ease-out;
+        }
+        @keyframes messageSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.me {
+            background: var(--primary-color);
+            align-self: flex-end;
+            color: white;
+            border-bottom-right-radius: 4px;
+            padding-right: 30px; /* Space for status indicator */
+        }
+        .message.other {
+            background: var(--surface-color-2);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .message.system {
+            align-self: center;
+            background: var(--surface-color);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            text-align: center;
+            border-radius: 12px;
+        }
+        .message img {
+            max-width: 100%;
+            max-height: 300px; /* Limit image height to prevent excessive scrolling */
+            border-radius: 12px;
+            cursor: pointer;
+            object-fit: cover;
+            display: block;
+        }
+        /* Loading indicator for images */
+        .message.pending-image::before {
+            content: 'Loading image...';
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            padding: 10px;
+        }
 
-    /* Message Status Indicator */
-    .message-status {
-        position: absolute;
-        bottom: 5px;
-        right: 8px;
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.7);
-        line-height: 1;
-    }
-    .message.has-image .message-status { /* Adjust for images */
-        color: white;
-        text-shadow: 0 0 3px rgba(0,0,0,0.7);
-        right: 8px;
-        bottom: 8px;
-    }
+        /* Message Status Indicator */
+        .message-status {
+            position: absolute;
+            bottom: 5px;
+            right: 8px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1;
+        }
+        .message.has-image .message-status { /* Adjust for images */
+            color: white;
+            text-shadow: 0 0 3px rgba(0,0,0,0.7);
+            right: 8px;
+            bottom: 8px;
+        }
 
 
-    /* Input Area */
-    .input-container {
-      background: var(--surface-color);
-      border-top: 1px solid var(--surface-color-2);
-      padding: 8px 12px;
-      padding-bottom: max(8px, env(safe-area-inset-bottom));
-      flex-shrink: 0;
-    }
-    .input-area {
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-      background: var(--surface-color-2);
-      border-radius: 20px;
-      padding: 6px;
-    }
-    .photo-btn {
-      background: none;
-      border: none;
-      color: var(--primary-color);
-      font-size: 1.5rem;
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 50%;
-      transition: background-color 0.2s;
-      flex-shrink: 0;
-    }
-    .photo-btn:hover { background: var(--surface-hover); }
-    #messageInput {
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: white;
-      outline: none;
-      font-size: 16px; /* Prevents iOS zoom */
-      font-family: inherit;
-      resize: none;
-      min-height: 22px;
-      max-height: 100px;
-      padding: 8px 12px;
-      overflow-y: auto;
-    }
-    #messageInput::placeholder { color: var(--text-secondary); }
-    #sendBtn {
-      background: var(--primary-color);
-      border: none;
-      color: white;
-      border-radius: 50%;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      flex-shrink: 0;
-      font-size: 1.2rem;
-    }
-    #sendBtn:disabled {
-      background: var(--surface-hover);
-      transform: scale(1);
-      cursor: not-allowed;
-    }
-    #sendBtn:not(:disabled):hover {
-      background: var(--primary-hover);
-      transform: scale(1.05);
-    }
-    input[type="file"] { display: none; }
+        /* Input Area */
+        .input-container {
+            background: var(--surface-color);
+            border-top: 1px solid var(--surface-color-2);
+            padding: 8px 12px;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+            flex-shrink: 0;
+        }
+        .input-area {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            background: var(--surface-color-2);
+            border-radius: 20px;
+            padding: 6px;
+        }
+        .photo-btn {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+            flex-shrink: 0;
+        }
+        .photo-btn:hover { background: var(--surface-hover); }
+        #messageInput {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: white;
+            outline: none;
+            font-size: 16px; /* Prevents iOS zoom */
+            font-family: inherit;
+            resize: none;
+            min-height: 22px;
+            max-height: 100px;
+            padding: 8px 12px;
+            overflow-y: auto;
+        }
+        #messageInput::placeholder { color: var(--text-secondary); }
+        #sendBtn {
+            background: var(--primary-color);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            font-size: 1.2rem;
+        }
+        #sendBtn:disabled {
+            background: var(--surface-hover);
+            transform: scale(1);
+            cursor: not-allowed;
+        }
+        #sendBtn:not(:disabled):hover {
+            background: var(--primary-hover);
+            transform: scale(1.05);
+        }
+        input[type="file"] { display: none; }
 
-    /* Generic Modal Styles */
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: var(--modal-backdrop);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      padding: 20px;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.3s, visibility 0.3s;
-    }
-    .modal.visible {
-      opacity: 1;
-      visibility: visible;
-    }
-    .modal-content {
-      background: var(--surface-color);
-      border-radius: 16px;
-      padding: 24px;
-      max-width: 400px;
-      width: 100%;
-      max-height: 90vh;
-      overflow-y: auto;
-      transform: scale(0.95);
-      transition: transform 0.3s;
-    }
-    .modal.visible .modal-content {
-      transform: scale(1);
-    }
-    .modal h2 {
-      margin: 0 0 16px 0;
-      font-size: 1.3rem;
-      text-align: center;
-    }
-    .modal p {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      line-height: 1.4;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    .btn-group {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .btn {
-      flex: 1;
-      background: var(--primary-color);
-      border: none;
-      color: white;
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    .btn:hover { background: var(--primary-hover); }
-    .btn-secondary { background: var(--surface-color-2); }
-    .btn-secondary:hover { background: var(--surface-hover); }
+        /* Generic Modal Styles */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: var(--modal-backdrop);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: var(--surface-color);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.95);
+            transition: transform 0.3s;
+        }
+        .modal.visible .modal-content {
+            transform: scale(1);
+        }
+        .modal h2 {
+            margin: 0 0 16px 0;
+            font-size: 1.3rem;
+            text-align: center;
+        }
+        .modal p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            flex: 1;
+            background: var(--primary-color);
+            border: none;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-secondary { background: var(--surface-color-2); }
+        .btn-secondary:hover { background: var(--surface-hover); }
 
-    /* Specific Modal Content */
-    .code-container {
-      background: var(--bg-color);
-      border: 1px solid var(--surface-color-2);
-      border-radius: 12px;
-      padding: 16px;
-      margin: 16px 0;
-      font-family: monospace;
-      font-size: 0.85rem;
-      color: var(--code-color);
-      max-height: 150px;
-      overflow-y: auto;
-      word-break: break-all;
-      user-select: all;
-    }
-    .paste-area {
-      width: 100%;
-      background: var(--bg-color);
-      border: 1px solid var(--surface-color-2);
-      border-radius: 12px;
-      padding: 12px;
-      color: var(--code-color);
-      font-family: monospace;
-      font-size: 0.85rem;
-      resize: vertical;
-      min-height: 100px;
-      margin: 8px 0 16px;
-    }
-    .paste-area:focus {
-        outline: none;
-        border-color: var(--primary-color);
-    }
-    .hidden { display: none; }
-  </style>
+        /* Specific Modal Content */
+        .code-container {
+            background: var(--bg-color);
+            border: 1px solid var(--surface-color-2);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--code-color);
+            max-height: 150px;
+            overflow-y: auto;
+            word-break: break-all;
+            user-select: all;
+        }
+        .paste-area {
+            width: 100%;
+            background: var(--bg-color);
+            border: 1px solid var(--surface-color-2);
+            border-radius: 12px;
+            padding: 12px;
+            color: var(--code-color);
+            font-family: monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+            min-height: 100px;
+            margin: 8px 0 16px;
+        }
+        .paste-area:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        .hidden { display: none; }
+    </style>
 </head>
 <body>
-  <div class="status-bar">
-    <span id="statusText">Waiting to connect...</span>
-  </div>
-  
-  <header>
-    <button class="header-btn" id="infoBtn">ℹ️</button>
-    <span>Private Chat</span>
-    <button class="header-btn" id="newChatBtn">🔄</button>
-  </header>
-  
-  <main id="chat" role="log"></main>
-
-  <div class="input-container">
-    <div class="input-area">
-      <label for="photoInput" class="photo-btn" title="Send photo">📎</label>
-      <input type="file" id="photoInput" accept="image/*" />
-      <textarea id="messageInput" rows="1" placeholder="Message"></textarea>
-      <button id="sendBtn" disabled>➤</button>
+    <div class="status-bar">
+        <span id="statusText">Waiting to connect...</span>
     </div>
-  </div>
+    
+    <header>
+        <button class="header-btn" id="infoBtn">ℹ️</button>
+        <span>Private Chat</span>
+        <button class="header-btn" id="newChatBtn">🔄</button>
+    </header>
+    
+    <main id="chat" role="log"></main>
 
-  <!-- Connection Setup Modal -->
-  <div id="setupModal" class="modal">
-    <div class="modal-content">
-      <div id="initialStep">
-        <h2>Start Private Chat</h2>
-        <p>This chat is end-to-end encrypted. No server stores your messages. Choose how to connect:</p>
-        <div class="btn-group">
-          <button class="btn" id="createRoomBtn">Create Room</button>
-          <button class="btn btn-secondary" id="joinRoomBtn">Join Room</button>
+    <div class="input-container">
+        <div class="input-area">
+            <label for="photoInput" class="photo-btn" title="Send photo">📎</label>
+            <input type="file" id="photoInput" accept="image/*" />
+            <textarea id="messageInput" rows="1" placeholder="Message"></textarea>
+            <button id="sendBtn" disabled>➤</button>
         </div>
-      </div>
-      
-      <div id="offerStep" class="hidden">
-        <h2>1. Share Offer Code</h2>
-        <p>Copy this entire code and send it to your friend (e.g., via text message).</p>
-        <div id="offerCode" class="code-container" tabindex="0"></div>
-        <button class="btn" id="copyOfferBtn">Copy Code</button>
-        <h2 style="margin-top:24px;">2. Paste Answer Code</h2>
-        <p>Once your friend sends their code back, paste it here to connect.</p>
-        <textarea id="offerAnswerPaste" class="paste-area" placeholder="Paste answer code here..."></textarea>
-        <button class="btn" id="connectOfferBtn">Connect</button>
-      </div>
-      
-      <div id="answerStep" class="hidden">
-        <h2>1. Paste Offer Code</h2>
-        <p>Paste the code your friend sent you here.</p>
-        <textarea id="answerOfferPaste" class="paste-area" placeholder="Paste offer code here..."></textarea>
-        <button class="btn" id="createAnswerBtn">Create Answer Code</button>
-        
-        <div id="answerGenerated" class="hidden">
-            <h2 style="margin-top:24px;">2. Share Answer Code</h2>
-            <p>Success! Now copy this new code and send it back to your friend to complete the connection.</p>
-            <div id="answerCode" class="code-container" tabindex="0"></div>
-            <button class="btn" id="copyAnswerBtn">Copy Answer</button>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- Generic Info/Confirm Modal -->
-  <div id="infoModal" class="modal">
-      <div class="modal-content">
-          <h2 id="infoModalTitle"></h2>
-          <p id="infoModalText"></p>
-          <div id="infoModalButtons" class="btn-group">
-             <!-- Buttons will be injected here -->
-          </div>
-      </div>
-  </div>
+    <!-- Connection Setup Modal -->
+    <div id="setupModal" class="modal">
+        <div class="modal-content">
+            <div id="initialStep">
+                <h2>Start Private Chat</h2>
+                <p>This chat is end-to-end encrypted. No server stores your messages. Choose how to connect:</p>
+                <div class="btn-group">
+                    <button class="btn" id="createRoomBtn">Create Room</button>
+                    <button class="btn btn-secondary" id="joinRoomBtn">Join Room</button>
+                </div>
+            </div>
+            
+            <div id="offerStep" class="hidden">
+                <h2>1. Share Offer Code</h2>
+                <p>Copy this entire code and send it to your friend (e.g., via text message).</p>
+                <div id="offerCode" class="code-container" tabindex="0"></div>
+                <button class="btn" id="copyOfferBtn">Copy Code</button>
+                <h2 style="margin-top:24px;">2. Paste Answer Code</h2>
+                <p>Once your friend sends their code back, paste it here to connect.</p>
+                <textarea id="offerAnswerPaste" class="paste-area" placeholder="Paste answer code here..."></textarea>
+                <button class="btn" id="connectOfferBtn">Connect</button>
+            </div>
+            
+            <div id="answerStep" class="hidden">
+                <h2>1. Paste Offer Code</h2>
+                <p>Paste the code your friend sent you here.</p>
+                <textarea id="answerOfferPaste" class="paste-area" placeholder="Paste offer code here..."></textarea>
+                <button class="btn" id="createAnswerBtn">Create Answer Code</button>
+                
+                <div id="answerGenerated" class="hidden">
+                    <h2 style="margin-top:24px;">2. Share Answer Code</h2>
+                    <p>Success! Now copy this new code and send it back to your friend to complete the connection.</p>
+                    <div id="answerCode" class="code-container" tabindex="0"></div>
+                    <button class="btn" id="copyAnswerBtn">Copy Answer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Info/Confirm Modal -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <h2 id="infoModalTitle"></h2>
+            <p id="infoModalText"></p>
+            <div id="infoModalButtons" class="btn-group">
+                <!-- Buttons will be injected here -->
+            </div>
+        </div>
+    </div>
 
 
 <script>
 class WebRTCChat {
+    // Constants for image chunking
+    static CHUNK_SIZE = 16 * 1024; // 16KB per chunk, a safe size for DataChannels
+
     constructor() {
         this.pc = null;
         this.dataChannel = null;
         this.isConnected = false;
         this.pendingMessages = {}; // To track messages waiting for ACK
         this.notificationPermission = 'default';
+        this.receivedFiles = {}; // To reassemble incoming file chunks
 
         this.initElements();
         this.initEventListeners();
@@ -504,18 +516,30 @@ class WebRTCChat {
         this.statusText.className = className;
     }
 
-    addMessage(content, type, isImage = false, messageId = null) {
+    addMessage(content, type, isImage = false, messageId = null, filename = null) {
         const msgDiv = document.createElement('div');
         msgDiv.classList.add('message', type);
         if (isImage) {
-          msgDiv.classList.add('has-image');
+            msgDiv.classList.add('has-image');
+        }
+        if (messageId) {
+            msgDiv.id = `msg-${messageId}`; // Assign ID for status updates or content replacement
         }
         
         if (isImage) {
+            // For images, 'content' is the Data URL
             const img = document.createElement('img');
             img.src = content;
-            img.alt = 'Shared image';
+            img.alt = filename ? `Shared image: ${filename}` : 'Shared image';
             img.onload = () => this.scrollToBottom();
+            img.onerror = () => {
+                // Fallback for broken images
+                img.style.display = 'none'; // Hide the broken image icon
+                const errorSpan = document.createElement('span');
+                errorSpan.textContent = `Error loading image: ${filename || 'Unknown file'}`;
+                msgDiv.appendChild(errorSpan);
+                this.scrollToBottom();
+            };
             msgDiv.appendChild(img);
         } else {
             const textNode = document.createTextNode(content);
@@ -531,7 +555,43 @@ class WebRTCChat {
         
         this.chat.appendChild(msgDiv);
         this.scrollToBottom();
+        return msgDiv; // Return the created message div for potential updates
     }
+
+    // Function to update an existing message div with new content (e.g., image src)
+    updateMessageContent(messageId, newContent, isImage = false) {
+        const msgDiv = document.getElementById(`msg-${messageId}`);
+        if (!msgDiv) return;
+
+        // Clear existing content (e.g., "Preparing to send...")
+        msgDiv.innerHTML = ''; 
+        msgDiv.classList.remove('pending-image'); // Remove pending class
+
+        if (isImage) {
+            const img = document.createElement('img');
+            img.src = newContent;
+            img.alt = 'Shared image';
+            img.onload = () => this.scrollToBottom();
+            img.onerror = () => {
+                img.style.display = 'none';
+                const errorSpan = document.createElement('span');
+                errorSpan.textContent = `Error loading image.`;
+                msgDiv.appendChild(errorSpan);
+                this.scrollToBottom();
+            };
+            msgDiv.appendChild(img);
+        } else {
+            msgDiv.textContent = newContent;
+        }
+
+        // Re-add status span if it was a 'me' message
+        const statusSpan = document.getElementById(`status-${messageId}`);
+        if (statusSpan) {
+            msgDiv.appendChild(statusSpan);
+        }
+        this.scrollToBottom();
+    }
+
 
     scrollToBottom() {
         this.chat.scrollTop = this.chat.scrollHeight;
@@ -570,7 +630,11 @@ class WebRTCChat {
                         this.requestNotificationPermission();
                     }
                     break;
-                case 'disconnected': this.updateStatus('Reconnecting...', 'status-connecting'); break;
+                case 'disconnected': 
+                    this.updateStatus('Reconnecting...', 'status-connecting'); 
+                    // Clear pending messages as they might be lost
+                    this.pendingMessages = {};
+                    break;
                 case 'failed':
                 case 'closed':
                     if (this.isConnected) {
@@ -585,18 +649,32 @@ class WebRTCChat {
         };
 
         return new Promise(resolve => {
+            // Wait for ICE candidates to finish gathering to get a complete offer/answer
             this.pc.onicecandidate = (event) => !event.candidate && resolve();
         });
     }
 
     setupDataChannel(channel) {
         this.dataChannel = channel;
+        // Ensure binaryType is 'arraybuffer' for efficient file transfer
+        this.dataChannel.binaryType = 'arraybuffer'; 
         this.dataChannel.onmessage = (event) => this.handleDataChannelMessage(event);
         this.dataChannel.onopen = () => console.log("Data channel is open");
         this.dataChannel.onclose = () => console.log("Data channel is closed");
+        this.dataChannel.onerror = (error) => console.error("Data channel error:", error);
     }
 
     handleDataChannelMessage(event) {
+        // DataChannel can send ArrayBuffer directly or string.
+        // We need to check if it's an ArrayBuffer (for file chunks) or a string (for JSON messages)
+        if (event.data instanceof ArrayBuffer) {
+            // This is a file chunk. We expect the previous message to be the metadata.
+            // Or, more robustly, embed metadata into each chunk (e.g., fileId, chunkIndex).
+            // For this fixed version, we'll embed metadata as JSON for all types.
+            console.warn("Received unexpected ArrayBuffer without JSON metadata. This might indicate an issue with message structure.");
+            return;
+        }
+
         const message = JSON.parse(event.data);
         switch (message.type) {
             case 'text':
@@ -604,10 +682,49 @@ class WebRTCChat {
                 this.sendAck(message.id);
                 this.showNotification('New Message', message.payload);
                 break;
-            case 'image':
-                this.addMessage(message.payload, 'other', true);
-                this.sendAck(message.id);
-                this.showNotification('New Image Received', 'Your friend sent you an image or GIF.');
+            case 'file-start':
+                // Initialize file reception state
+                this.receivedFiles[message.fileId] = {
+                    metadata: message,
+                    chunks: [],
+                    receivedChunks: 0,
+                    msgDiv: this.addMessage(`Receiving ${message.fileName} (${(message.fileSize / 1024 / 1024).toFixed(2)}MB)...`, 'other', false, message.fileId)
+                };
+                this.receivedFiles[message.fileId].msgDiv.classList.add('pending-image'); // Add a class for visual loading
+                break;
+            case 'file-chunk':
+                const fileInfo = this.receivedFiles[message.fileId];
+                if (fileInfo) {
+                    fileInfo.chunks[message.chunkIndex] = message.payload; // Store the ArrayBuffer
+                    fileInfo.receivedChunks++;
+                    // Optional: Update progress on the UI for the receiving file
+                    // fileInfo.msgDiv.textContent = `Receiving ${fileInfo.metadata.fileName}: ${Math.floor((fileInfo.receivedChunks / fileInfo.metadata.totalChunks) * 100)}%`;
+                }
+                break;
+            case 'file-end':
+                const completedFileInfo = this.receivedFiles[message.fileId];
+                if (completedFileInfo && completedFileInfo.receivedChunks === completedFileInfo.metadata.totalChunks) {
+                    // All chunks received, reconstruct the file
+                    const fullBlob = new Blob(completedFileInfo.chunks, { type: completedFileInfo.metadata.fileType });
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        this.updateMessageContent(message.fileId, reader.result, true); // Update existing message with the image
+                        this.sendAck(message.id); // ACK the final 'file-end' message
+                        this.showNotification('New Image Received', `Your friend sent you an image or GIF: ${completedFileInfo.metadata.fileName}`);
+                        delete this.receivedFiles[message.fileId]; // Clean up
+                    };
+                    reader.onerror = () => {
+                        this.updateMessageContent(message.fileId, `Error displaying image: ${completedFileInfo.metadata.fileName}`, false);
+                        console.error("Error reading received blob as DataURL");
+                        delete this.receivedFiles[message.fileId];
+                    };
+                    reader.readAsDataURL(fullBlob);
+                } else {
+                    // Handle missing chunks or out-of-order 'file-end'
+                    console.error(`Received file-end for ${message.fileId} but chunks are missing or incomplete.`);
+                    this.updateMessageContent(message.fileId, `Error receiving image: ${completedFileInfo?.metadata.fileName || 'Unknown file'}. Transfer incomplete.`, false);
+                    delete this.receivedFiles[message.fileId]; // Clean up partial data
+                }
                 break;
             case 'ack':
                 const ackId = message.payload;
@@ -632,52 +749,137 @@ class WebRTCChat {
         if (text) {
             const messageId = crypto.randomUUID();
             const message = { type: 'text', payload: text, id: messageId };
-            this.dataChannel.send(JSON.stringify(message));
-            this.addMessage(text, 'me', false, messageId);
-            document.getElementById(`status-${messageId}`).textContent = '✓'; // Sent
-            this.pendingMessages[messageId] = true;
+            try {
+                this.dataChannel.send(JSON.stringify(message));
+                this.addMessage(text, 'me', false, messageId);
+                document.getElementById(`status-${messageId}`).textContent = '✓'; // Sent
+                this.pendingMessages[messageId] = true;
+            } catch (error) {
+                console.error("Error sending text message:", error);
+                this.addMessage('Failed to send message.', 'system');
+            }
             this.messageInput.value = '';
             this.autoResizeInput();
         }
         
         if (file) {
             this.sendImage(file);
-            this.photoInput.value = '';
+            this.photoInput.value = ''; // Clear the file input
         }
 
         this.updateSendBtn();
     }
     
     handlePhotoInputChange(event) {
-      const file = event.target.files[0];
-      if (file) this.addMessage(`Preparing to send ${file.name}...`, 'system');
-      this.updateSendBtn();
+        const file = event.target.files[0];
+        if (file) this.addMessage(`Selected photo: ${file.name}`, 'system');
+        this.updateSendBtn();
     }
     
-    sendImage(file) {
+    async sendImage(file) {
         if (file.size > 16 * 1024 * 1024) { // 16MB limit
             this.addMessage(`❌ Image too large (max 16MB). File is ${ (file.size / 1024 / 1024).toFixed(2) }MB.`, 'system');
             return;
         }
 
-        const messageId = crypto.randomUUID();
+        const fileId = crypto.randomUUID();
+        // Add a temporary message to the UI indicating file is being sent
+        const tempMsgDiv = this.addMessage(`Sending ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)...`, 'me', false, fileId);
+        tempMsgDiv.classList.add('pending-image'); // Add class for a loading state
+
         const reader = new FileReader();
-        reader.onload = () => {
-            const base64data = reader.result;
-            const message = { type: 'image', payload: base64data, id: messageId };
-            this.dataChannel.send(JSON.stringify(message));
-            this.addMessage(base64data, 'me', true, messageId);
-            document.getElementById(`status-${messageId}`).textContent = '✓'; // Sent
-            this.pendingMessages[messageId] = true;
+        reader.onload = async () => {
+            const arrayBuffer = reader.result;
+            const totalChunks = Math.ceil(arrayBuffer.byteLength / WebRTCChat.CHUNK_SIZE);
+
+            // Send file start metadata
+            const startMessage = {
+                type: 'file-start',
+                fileId: fileId,
+                fileName: file.name,
+                fileType: file.type,
+                fileSize: arrayBuffer.byteLength,
+                totalChunks: totalChunks
+            };
+            try {
+                this.dataChannel.send(JSON.stringify(startMessage));
+            } catch (error) {
+                console.error("Error sending file-start message:", error);
+                this.updateMessageContent(fileId, `Failed to start sending image: ${file.name}.`);
+                return;
+            }
+            
+
+            // Send chunks
+            for (let i = 0; i < totalChunks; i++) {
+                const offset = i * WebRTCChat.CHUNK_SIZE;
+                const chunk = arrayBuffer.slice(offset, offset + WebRTCChat.CHUNK_SIZE);
+                const chunkMessage = {
+                    type: 'file-chunk',
+                    fileId: fileId,
+                    chunkIndex: i,
+                    payload: chunk // Send ArrayBuffer directly
+                };
+                try {
+                    // Send chunk metadata as JSON string, then the ArrayBuffer.
+                    // DataChannel.send can take a string or ArrayBuffer/Blob.
+                    // For a robust protocol, it's better to send JSON string with metadata
+                    // AND then the raw binary data. However, DataChannel.send can't chain.
+                    // So, we stringify the payload that *contains* the chunk, which Base64 encodes it.
+                    // This brings us back to Base64 issues.
+                    // A better way is to send raw ArrayBuffer chunks, and have JSON metadata sent separately.
+                    // Let's modify the chunk payload to be the ArrayBuffer and send the metadata as part of it.
+                    // The `payload` will be the ArrayBuffer. The `type` determines how it's handled.
+
+                    // Wait for data channel buffer to clear if it's getting full
+                    while (this.dataChannel.bufferedAmount > this.dataChannel.bufferedAmountLowThreshold) {
+                        await new Promise(resolve => setTimeout(resolve, 100)); // Wait a bit
+                    }
+                    this.dataChannel.send(JSON.stringify({
+                        type: 'file-chunk-meta', // Indicate this message is metadata for a chunk
+                        fileId: fileId,
+                        chunkIndex: i,
+                        // No payload here, payload will be sent separately
+                    }));
+                    this.dataChannel.send(chunk); // Send the actual binary chunk
+                    
+                    // Update sender's status with progress
+                    // document.getElementById(`status-${fileId}`).textContent = `Sent: ${i + 1}/${totalChunks}`;
+                } catch (error) {
+                    console.error(`Error sending chunk ${i} for file ${fileId}:`, error);
+                    this.updateMessageContent(fileId, `Failed to send chunk ${i} of ${file.name}. Transfer aborted.`);
+                    return;
+                }
+            }
+
+            // Send file end message
+            const endMessage = {
+                type: 'file-end',
+                fileId: fileId,
+                id: crypto.randomUUID() // Add an ID for ACK
+            };
+            try {
+                this.dataChannel.send(JSON.stringify(endMessage));
+                document.getElementById(`status-${fileId}`).textContent = '✓'; // Sent
+                this.pendingMessages[endMessage.id] = true;
+            } catch (error) {
+                console.error("Error sending file-end message:", error);
+                this.updateMessageContent(fileId, `Failed to finalize sending image: ${file.name}.`);
+            }
+
+            // At this point, the sender only sees "Sent", the actual image will be displayed
+            // when the ACK is received, or if we want to show it immediately, we can do it here.
+            // For now, let's show it immediately for the sender, and the ACK will update status.
+            this.updateMessageContent(fileId, URL.createObjectURL(file), true); // Display the local image immediately
         };
         reader.onerror = () => this.addMessage('❌ Error reading file.', 'system');
-        reader.readAsDataURL(file);
+        reader.readAsArrayBuffer(file);
     }
     
     // --- SIGNALING & NOTIFICATIONS ---
 
     sendAck(id) {
-        if (this.dataChannel.readyState === 'open') {
+        if (this.dataChannel && this.dataChannel.readyState === 'open') {
             this.dataChannel.send(JSON.stringify({ type: 'ack', payload: id }));
         }
     }
@@ -686,7 +888,7 @@ class WebRTCChat {
         if ('Notification' in window && Notification.permission === 'default') {
             this.notificationPermission = await Notification.requestPermission();
         } else {
-             this.notificationPermission = Notification.permission;
+            this.notificationPermission = Notification.permission;
         }
     }
 
@@ -703,7 +905,8 @@ class WebRTCChat {
 
         const iceGatheringPromise = this.setupPeerConnection();
         
-        this.dataChannel = this.pc.createDataChannel('chat');
+        // Create DataChannel with 'ordered: true' for reliable file transfer
+        this.dataChannel = this.pc.createDataChannel('chat', { ordered: true });
         this.setupDataChannel(this.dataChannel);
 
         const offer = await this.pc.createOffer();
@@ -716,7 +919,10 @@ class WebRTCChat {
 
     async completeOffer() {
         const answerText = this.offerAnswerPaste.value.trim();
-        if (!answerText) return this.showInfoModal('Error', 'Please paste the answer code from your friend.');
+        if (!answerText) {
+            this.showInfoModal('Error', 'Please paste the answer code from your friend.');
+            return;
+        }
         try {
             const answer = JSON.parse(answerText);
             await this.pc.setRemoteDescription(new RTCSessionDescription(answer));
@@ -734,7 +940,10 @@ class WebRTCChat {
 
     async createAnswer() {
         const offerText = this.answerOfferPaste.value.trim();
-        if (!offerText) return this.showInfoModal('Error', 'Please paste the offer code from your friend.');
+        if (!offerText) {
+            this.showInfoModal('Error', 'Please paste the offer code from your friend.');
+            return;
+        }
         try {
             const offer = JSON.parse(offerText);
             const iceGatheringPromise = this.setupPeerConnection();
@@ -775,7 +984,11 @@ class WebRTCChat {
             button.className = btnInfo.class;
             button.onclick = () => {
                 this.infoModal.classList.remove('visible');
-                if (btnInfo.action && typeof btnInfo.action === 'function') btnInfo.action();
+                if (btnInfo.action === 'close') {
+                    // No action needed other than closing
+                } else if (typeof btnInfo.action === 'function') {
+                    btnInfo.action();
+                }
             };
             this.infoModalButtons.appendChild(button);
         });
