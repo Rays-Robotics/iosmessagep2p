@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Private iMessage-Style WebRTC Chat (Text + Photos)</title>
+  <style>
+    /* Apple-ish dark mode vibe */
+    body {
+      margin: 0;
+      background: #1c1c1e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+        Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0 0 20px #0009;
+    }
+
+    header {
+      background: #2c2c2e;
+      padding: 16px;
+      font-weight: 600;
+      font-size: 1.25rem;
+      text-align: center;
+      border-bottom: 1px solid #3a3a3c;
+      user-select: none;
+    }
+
+    #chat {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #1c1c1e;
+      scroll-behavior: smooth;
+    }
+
+    /* Chat bubbles */
+    .message {
+      max-width: 70%;
+      padding: 12px 18px;
+      border-radius: 20px;
+      font-size: 1rem;
+      line-height: 1.3;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 0.3);
+      word-wrap: break-word;
+      display: inline-block;
+      position: relative;
+      user-select: text;
+    }
+    .message.me {
+      background: linear-gradient(135deg, #0a84ff, #0051d4);
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+      color: white;
+    }
+    .message.other {
+      background: #2c2c2e;
+      color: #e5e5ea;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    /* Image messages */
+    .message img {
+      max-width: 100%;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgb(0 0 0 / 0.6);
+      transition: transform 0.2s ease;
+    }
+    .message img:hover {
+      transform: scale(1.05);
+    }
+
+    /* Input area */
+    .input-area {
+      display: flex;
+      padding: 12px 16px;
+      border-top: 1px solid #3a3a3c;
+      background: #2c2c2e;
+      align-items: center;
+      gap: 10px;
+    }
+    #messageInput {
+      flex-grow: 1;
+      border: none;
+      border-radius: 18px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      background: #3a3a3c;
+      color: white;
+      outline: none;
+      font-family: inherit;
+      resize: none;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    #messageInput::placeholder {
+      color: #8e8e93;
+    }
+    button, label {
+      cursor: pointer;
+      user-select: none;
+      background: #0a84ff;
+      border: none;
+      color: white;
+      font-weight: 600;
+      font-size: 1rem;
+      border-radius: 18px;
+      padding: 10px 18px;
+      box-shadow: 0 2px 6px rgb(0 132 255 / 0.7);
+      transition: background-color 0.25s ease;
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    button:hover:not(:disabled), label:hover {
+      background: #0051d4;
+      box-shadow: 0 4px 12px rgb(0 81 212 / 0.8);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    /* Scrollbar - subtle */
+    #chat::-webkit-scrollbar {
+      width: 8px;
+    }
+    #chat::-webkit-scrollbar-track {
+      background: #1c1c1e;
+    }
+    #chat::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 4px;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      body {
+        max-width: 100vw;
+        height: 100vh;
+      }
+      .input-area {
+        padding: 10px 12px;
+      }
+      #messageInput {
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>Private iMessage-Style Chat</header>
+  <main id="chat" aria-live="polite" role="log" tabindex="0"></main>
+
+  <section class="input-area" aria-label="Send message">
+    <label for="photoInput" title="Send photo">&#128247;</label>
+    <input type="file" id="photoInput" accept="image/*" />
+    <textarea id="messageInput" rows="1" placeholder="Type a message..."></textarea>
+    <button id="sendBtn" disabled>Send</button>
+  </section>
+
+<script>
+  // WebRTC Setup (data only)
+  let pc = new RTCPeerConnection();
+  let dataChannel;
+
+  const chat = document.getElementById('chat');
+  const messageInput = document.getElementById('messageInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const photoInput = document.getElementById('photoInput');
+
+  // Utility to add a message bubble
+  function addMessage(content, from = 'other', isImage = false) {
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('message', from);
+    if(isImage) {
+      const img = document.createElement('img');
+      img.src = content;
+      img.alt = 'Sent photo';
+      img.loading = 'lazy';
+      msgDiv.appendChild(img);
+    } else {
+      msgDiv.textContent = content;
+    }
+    chat.appendChild(msgDiv);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  // Enable send button only if text or photo selected
+  function updateSendBtn() {
+    sendBtn.disabled = !messageInput.value.trim() && !photoInput.files.length;
+  }
+
+  messageInput.addEventListener('input', updateSendBtn);
+  photoInput.addEventListener('change', updateSendBtn);
+
+  // Send text or photo over data channel
+  async function sendMessage() {
+    if (!dataChannel || dataChannel.readyState !== 'open') {
+      alert('Data channel not connected yet');
+      return;
+    }
+    if (photoInput.files.length) {
+      // Read image as base64
+      const file = photoInput.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result;
+        // Send as JSON to distinguish
+        dataChannel.send(JSON.stringify({type: 'image', data: base64}));
+        addMessage(base64, 'me', true);
+      };
+      reader.readAsDataURL(file);
+      photoInput.value = '';
+    }
+    if (messageInput.value.trim()) {
+      dataChannel.send(messageInput.value.trim());
+      addMessage(messageInput.value.trim(), 'me');
+      messageInput.value = '';
+    }
+    updateSendBtn();
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  messageInput.addEventListener('keydown', e => {
+    if(e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if(!sendBtn.disabled) sendMessage();
+    }
+  });
+
+  // WebRTC data channel setup — manual copy-paste signaling
+
+  // Elements for signaling
+  let signalingInput = prompt('Paste offer/answer here or leave empty to create offer');
+  let signalingOutput = null;
+
+  async function startConnection(isOffer) {
+    if (isOffer) {
+      dataChannel = pc.createDataChannel('chat');
+      setupDataChannel();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await waitForIceGathering();
+      signalingOutput = JSON.stringify(pc.localDescription, null, 2);
+      alert('Copy this OFFER and send it to your friend:\n\n' + signalingOutput);
+      let remoteDesc = prompt('Paste ANSWER from your friend:');
+      if (!remoteDesc) return alert('No answer pasted. Reload to try again.');
+      await pc.setRemoteDescription(JSON.parse(remoteDesc));
+    } else {
+      pc.ondatachannel = event => {
+        dataChannel = event.channel;
+        setupDataChannel();
+      };
+      let remoteOffer = signalingInput;
+      if (!remoteOffer) {
+        remoteOffer = prompt('Paste OFFER from your friend:');
+        if (!remoteOffer) return alert('No offer pasted. Reload to try again.');
+      }
+      await pc.setRemoteDescription(JSON.parse(remoteOffer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await waitForIceGathering();
+      signalingOutput = JSON.stringify(pc.localDescription, null, 2);
+      alert('Copy this ANSWER and send it back to your friend:\n\n' + signalingOutput);
+    }
+  }
+
+  function setupDataChannel() {
+    dataChannel.onopen = () => {
+      alert('Chat connected! Send text or photos.');
+    };
+    dataChannel.onmessage = event => {
+      try {
+        const data = JSON.parse(event.data);
+        if(data.type === 'image') {
+          addMessage(data.data, 'other', true);
+        } else {
+          addMessage(event.data, 'other');
+        }
+      } catch {
+        addMessage(event.data, 'other');
+      }
+    };
+    dataChannel.onclose = () => {
+      alert('Chat disconnected');
+    };
+  }
+
+  function waitForIceGathering() {
+    return new Promise(resolve => {
+      if (pc.iceGatheringState === 'complete') resolve();
+      else pc.addEventListener('icegatheringstatechange', () => {
+        if (pc.iceGatheringState === 'complete') resolve();
+      });
+    });
+  }
+
+  // Kick off the manual signaling dance
+  (async () => {
+    const createOffer = confirm('Do you want to CREATE the offer? (Cancel = answer)');
+    await startConnection(createOffer);
+  })();
+</script>
+
+</body>
+</html>
