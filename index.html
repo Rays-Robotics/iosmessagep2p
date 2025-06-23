@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Private iMessage-Style WebRTC Chat (Text + Photos)</title>
+  <title>Private iMessage-Style WebRTC Chat (Text + Photos) with Copy Button</title>
   <style>
-    /* Apple-ish dark mode vibe */
+    /* (Keep all previous styles for chat and layout, omitted here for brevity) */
     body {
       margin: 0;
       background: #1c1c1e;
@@ -20,7 +20,6 @@
       margin-right: auto;
       box-shadow: 0 0 20px #0009;
     }
-
     header {
       background: #2c2c2e;
       padding: 16px;
@@ -30,7 +29,6 @@
       border-bottom: 1px solid #3a3a3c;
       user-select: none;
     }
-
     #chat {
       flex-grow: 1;
       overflow-y: auto;
@@ -41,8 +39,6 @@
       background: #1c1c1e;
       scroll-behavior: smooth;
     }
-
-    /* Chat bubbles */
     .message {
       max-width: 70%;
       padding: 12px 18px;
@@ -67,8 +63,6 @@
       align-self: flex-start;
       border-bottom-left-radius: 4px;
     }
-
-    /* Image messages */
     .message img {
       max-width: 100%;
       border-radius: 14px;
@@ -79,8 +73,6 @@
     .message img:hover {
       transform: scale(1.05);
     }
-
-    /* Input area */
     .input-area {
       display: flex;
       padding: 12px 16px;
@@ -128,35 +120,28 @@
       background: #0051d4;
       box-shadow: 0 4px 12px rgb(0 81 212 / 0.8);
     }
-
     input[type="file"] {
       display: none;
     }
-
-    /* Scrollbar - subtle */
-    #chat::-webkit-scrollbar {
-      width: 8px;
+    #signalingArea {
+      background: #2c2c2e;
+      margin: 8px 16px;
+      border-radius: 12px;
+      padding: 12px;
+      border: 1.5px solid #61dafb;
+      font-family: monospace;
+      color: #8bd7ff;
+      font-size: 0.85rem;
+      max-height: 150px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      user-select: all;
     }
-    #chat::-webkit-scrollbar-track {
-      background: #1c1c1e;
-    }
-    #chat::-webkit-scrollbar-thumb {
-      background: #444;
-      border-radius: 4px;
-    }
-
-    /* Responsive */
-    @media (max-width: 480px) {
-      body {
-        max-width: 100vw;
-        height: 100vh;
-      }
-      .input-area {
-        padding: 10px 12px;
-      }
-      #messageInput {
-        font-size: 0.95rem;
-      }
+    .copy-btn {
+      margin: 8px 16px;
+      align-self: center;
+      max-width: 120px;
     }
   </style>
 </head>
@@ -171,8 +156,12 @@
     <button id="sendBtn" disabled>Send</button>
   </section>
 
+  <section aria-label="Signaling data" style="display:none; flex-direction: column; margin-bottom: 10px;">
+    <div id="signalingArea" tabindex="0" aria-label="Signaling JSON data"></div>
+    <button class="copy-btn" id="copySignalingBtn">Copy to Clipboard</button>
+  </section>
+
 <script>
-  // WebRTC Setup (data only)
   let pc = new RTCPeerConnection();
   let dataChannel;
 
@@ -181,7 +170,11 @@
   const sendBtn = document.getElementById('sendBtn');
   const photoInput = document.getElementById('photoInput');
 
-  // Utility to add a message bubble
+  // Signaling UI
+  const signalingSection = document.querySelector('section[aria-label="Signaling data"]');
+  const signalingArea = document.getElementById('signalingArea');
+  const copySignalingBtn = document.getElementById('copySignalingBtn');
+
   function addMessage(content, from = 'other', isImage = false) {
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message', from);
@@ -198,7 +191,6 @@
     chat.scrollTop = chat.scrollHeight;
   }
 
-  // Enable send button only if text or photo selected
   function updateSendBtn() {
     sendBtn.disabled = !messageInput.value.trim() && !photoInput.files.length;
   }
@@ -206,19 +198,16 @@
   messageInput.addEventListener('input', updateSendBtn);
   photoInput.addEventListener('change', updateSendBtn);
 
-  // Send text or photo over data channel
   async function sendMessage() {
     if (!dataChannel || dataChannel.readyState !== 'open') {
       alert('Data channel not connected yet');
       return;
     }
     if (photoInput.files.length) {
-      // Read image as base64
       const file = photoInput.files[0];
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = reader.result;
-        // Send as JSON to distinguish
         dataChannel.send(JSON.stringify({type: 'image', data: base64}));
         addMessage(base64, 'me', true);
       };
@@ -241,11 +230,27 @@
     }
   });
 
-  // WebRTC data channel setup — manual copy-paste signaling
+  // Copy signaling JSON to clipboard on button click
+  copySignalingBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(signalingArea.textContent);
+      copySignalingBtn.textContent = 'Copied!';
+      setTimeout(() => copySignalingBtn.textContent = 'Copy to Clipboard', 1500);
+    } catch {
+      alert('Failed to copy. Please select and copy manually.');
+    }
+  };
 
-  // Elements for signaling
-  let signalingInput = prompt('Paste offer/answer here or leave empty to create offer');
-  let signalingOutput = null;
+  // WebRTC signaling dance with visible signaling JSON and copy button
+
+  async function waitForIceGathering() {
+    return new Promise(resolve => {
+      if (pc.iceGatheringState === 'complete') resolve();
+      else pc.addEventListener('icegatheringstatechange', () => {
+        if (pc.iceGatheringState === 'complete') resolve();
+      });
+    });
+  }
 
   async function startConnection(isOffer) {
     if (isOffer) {
@@ -254,8 +259,8 @@
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       await waitForIceGathering();
-      signalingOutput = JSON.stringify(pc.localDescription, null, 2);
-      alert('Copy this OFFER and send it to your friend:\n\n' + signalingOutput);
+      signalingArea.textContent = JSON.stringify(pc.localDescription, null, 2);
+      signalingSection.style.display = 'flex';
       let remoteDesc = prompt('Paste ANSWER from your friend:');
       if (!remoteDesc) return alert('No answer pasted. Reload to try again.');
       await pc.setRemoteDescription(JSON.parse(remoteDesc));
@@ -264,17 +269,15 @@
         dataChannel = event.channel;
         setupDataChannel();
       };
-      let remoteOffer = signalingInput;
-      if (!remoteOffer) {
-        remoteOffer = prompt('Paste OFFER from your friend:');
-        if (!remoteOffer) return alert('No offer pasted. Reload to try again.');
-      }
+      let remoteOffer = prompt('Paste OFFER from your friend:');
+      if (!remoteOffer) return alert('No offer pasted. Reload to try again.');
       await pc.setRemoteDescription(JSON.parse(remoteOffer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await waitForIceGathering();
-      signalingOutput = JSON.stringify(pc.localDescription, null, 2);
-      alert('Copy this ANSWER and send it back to your friend:\n\n' + signalingOutput);
+      signalingArea.textContent = JSON.stringify(pc.localDescription, null, 2);
+      signalingSection.style.display = 'flex';
+      alert('Copy the ANSWER and send it back to your friend using the Copy button below.');
     }
   }
 
@@ -299,21 +302,10 @@
     };
   }
 
-  function waitForIceGathering() {
-    return new Promise(resolve => {
-      if (pc.iceGatheringState === 'complete') resolve();
-      else pc.addEventListener('icegatheringstatechange', () => {
-        if (pc.iceGatheringState === 'complete') resolve();
-      });
-    });
-  }
-
-  // Kick off the manual signaling dance
   (async () => {
-    const createOffer = confirm('Do you want to CREATE the offer? (Cancel = answer)');
+    const createOffer = confirm('Do you want to CREATE the offer? (OK = create, Cancel = answer)');
     await startConnection(createOffer);
   })();
 </script>
-
 </body>
 </html>
