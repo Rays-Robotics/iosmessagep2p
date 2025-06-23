@@ -5,15 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Private WebRTC Chat</title>
   <style>
+    /* Base styles */
+    :root {
+      --bg-color: #000000;
+      --surface-color: #1c1c1e;
+      --surface-color-2: #2c2c2e;
+      --surface-hover: #3a3a3c;
+      --primary-color: #007aff;
+      --primary-hover: #0056cc;
+      --text-primary: #ffffff;
+      --text-secondary: #8e8e93;
+      --status-connected: #30d158;
+      --status-connecting: #ff9f0a;
+      --status-disconnected: #ff453a;
+      --code-color: #00d4ff;
+      --modal-backdrop: rgba(0, 0, 0, 0.8);
+    }
+
     * {
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
     
     body {
       margin: 0;
-      background: #000;
+      background: var(--bg-color);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      color: #fff;
+      color: var(--text-primary);
       display: flex;
       flex-direction: column;
       height: 100vh;
@@ -23,62 +41,60 @@
       overflow: hidden;
     }
 
+    /* Status Bar */
     .status-bar {
-      background: #1c1c1e;
+      background: var(--surface-color);
       padding: 8px 16px;
       text-align: center;
       font-size: 0.9rem;
-      color: #8e8e93;
-      border-bottom: 1px solid #2c2c2e;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--surface-color-2);
+      flex-shrink: 0;
     }
+    .status-bar span.status-connected { color: var(--status-connected); }
+    .status-bar span.status-connecting { color: var(--status-connecting); }
+    .status-bar span.status-disconnected { color: var(--status-disconnected); }
 
-    .status-connected {
-      color: #30d158;
-    }
-
-    .status-connecting {
-      color: #ff9f0a;
-    }
-
-    .status-disconnected {
-      color: #ff453a;
-    }
-
+    /* Header */
     header {
-      background: #1c1c1e;
+      background: var(--surface-color);
       padding: 12px 16px;
       font-weight: 600;
       font-size: 1.1rem;
       text-align: center;
-      border-bottom: 1px solid #2c2c2e;
+      border-bottom: 1px solid var(--surface-color-2);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .header-btn {
       background: none;
       border: none;
-      color: #007aff;
-      font-size: 1rem;
+      color: var(--primary-color);
+      font-size: 1.2rem;
       cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 8px;
+      padding: 4px;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       transition: background-color 0.2s;
     }
+    .header-btn:hover { background: var(--surface-color-2); }
 
-    .header-btn:hover {
-      background: #2c2c2e;
-    }
-
+    /* Chat Area */
     #chat {
       flex: 1;
       overflow-y: auto;
       padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      background: #000;
+      gap: 12px;
+      background: var(--bg-color);
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
     }
@@ -88,65 +104,63 @@
       padding: 10px 14px;
       border-radius: 18px;
       font-size: 1rem;
-      line-height: 1.3;
+      line-height: 1.4;
       word-wrap: break-word;
       position: relative;
       animation: messageSlide 0.3s ease-out;
     }
-
     @keyframes messageSlide {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-
     .message.me {
-      background: #007aff;
+      background: var(--primary-color);
       align-self: flex-end;
       color: white;
       border-bottom-right-radius: 4px;
     }
-
     .message.other {
-      background: #2c2c2e;
-      color: #ffffff;
+      background: var(--surface-color-2);
+      color: var(--text-primary);
       align-self: flex-start;
       border-bottom-left-radius: 4px;
     }
-
+    .message.system {
+        align-self: center;
+        background: var(--surface-color);
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        text-align: center;
+    }
     .message img {
       max-width: 100%;
       max-height: 300px;
       border-radius: 12px;
       cursor: pointer;
       object-fit: cover;
+      display: block;
     }
 
+    /* Input Area */
     .input-container {
-      background: #1c1c1e;
-      border-top: 1px solid #2c2c2e;
+      background: var(--surface-color);
+      border-top: 1px solid var(--surface-color-2);
       padding: 8px 12px;
       padding-bottom: max(8px, env(safe-area-inset-bottom));
+      flex-shrink: 0;
     }
-
     .input-area {
       display: flex;
       align-items: flex-end;
       gap: 8px;
-      background: #2c2c2e;
+      background: var(--surface-color-2);
       border-radius: 20px;
       padding: 6px;
     }
-
     .photo-btn {
       background: none;
       border: none;
-      color: #007aff;
+      color: var(--primary-color);
       font-size: 1.5rem;
       cursor: pointer;
       padding: 8px;
@@ -154,18 +168,14 @@
       transition: background-color 0.2s;
       flex-shrink: 0;
     }
-
-    .photo-btn:hover {
-      background: #3a3a3c;
-    }
-
+    .photo-btn:hover { background: var(--surface-hover); }
     #messageInput {
       flex: 1;
       border: none;
       background: transparent;
       color: white;
       outline: none;
-      font-size: 1rem;
+      font-size: 16px; /* Prevents iOS zoom */
       font-family: inherit;
       resize: none;
       min-height: 22px;
@@ -173,16 +183,11 @@
       padding: 8px 12px;
       overflow-y: auto;
     }
-
-    #messageInput::placeholder {
-      color: #8e8e93;
-    }
-
+    #messageInput::placeholder { color: var(--text-secondary); }
     #sendBtn {
-      background: #007aff;
+      background: var(--primary-color);
       border: none;
       color: white;
-      font-weight: 600;
       border-radius: 50%;
       width: 32px;
       height: 32px;
@@ -192,69 +197,71 @@
       cursor: pointer;
       transition: all 0.2s;
       flex-shrink: 0;
+      font-size: 1.2rem;
     }
-
     #sendBtn:disabled {
-      background: #3a3a3c;
+      background: var(--surface-hover);
+      transform: scale(1);
       cursor: not-allowed;
     }
-
     #sendBtn:not(:disabled):hover {
-      background: #0056cc;
+      background: var(--primary-hover);
       transform: scale(1.05);
     }
+    input[type="file"] { display: none; }
 
-    input[type="file"] {
-      display: none;
-    }
-
-    /* Connection Setup Modal */
+    /* Generic Modal Styles */
     .modal {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
+      inset: 0;
+      background: var(--modal-backdrop);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 1000;
       padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
     }
-
+    .modal.visible {
+      opacity: 1;
+      visibility: visible;
+    }
     .modal-content {
-      background: #1c1c1e;
+      background: var(--surface-color);
       border-radius: 16px;
       padding: 24px;
       max-width: 400px;
       width: 100%;
-      max-height: 80vh;
+      max-height: 90vh;
       overflow-y: auto;
+      transform: scale(0.95);
+      transition: transform 0.3s;
     }
-
+    .modal.visible .modal-content {
+      transform: scale(1);
+    }
     .modal h2 {
       margin: 0 0 16px 0;
       font-size: 1.3rem;
       text-align: center;
     }
-
     .modal p {
-      color: #8e8e93;
+      color: var(--text-secondary);
       font-size: 0.9rem;
       line-height: 1.4;
       margin-bottom: 20px;
+      text-align: center;
     }
-
     .btn-group {
       display: flex;
       gap: 12px;
       margin-bottom: 20px;
     }
-
     .btn {
       flex: 1;
-      background: #007aff;
+      background: var(--primary-color);
       border: none;
       color: white;
       padding: 12px 16px;
@@ -264,107 +271,43 @@
       cursor: pointer;
       transition: background-color 0.2s;
     }
+    .btn:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--surface-color-2); }
+    .btn-secondary:hover { background: var(--surface-hover); }
 
-    .btn:hover {
-      background: #0056cc;
-    }
-
-    .btn-secondary {
-      background: #2c2c2e;
-    }
-
-    .btn-secondary:hover {
-      background: #3a3a3c;
-    }
-
+    /* Specific Modal Content */
     .code-container {
-      background: #000;
-      border: 1px solid #2c2c2e;
+      background: var(--bg-color);
+      border: 1px solid var(--surface-color-2);
       border-radius: 12px;
-      padding: 12px;
+      padding: 16px;
       margin: 16px 0;
       font-family: monospace;
       font-size: 0.85rem;
-      color: #00d4ff;
-      max-height: 200px;
+      color: var(--code-color);
+      max-height: 150px;
       overflow-y: auto;
       word-break: break-all;
       user-select: all;
     }
-
     .paste-area {
       width: 100%;
-      background: #000;
-      border: 1px solid #2c2c2e;
+      background: var(--bg-color);
+      border: 1px solid var(--surface-color-2);
       border-radius: 12px;
       padding: 12px;
-      color: #00d4ff;
+      color: var(--code-color);
       font-family: monospace;
       font-size: 0.85rem;
       resize: vertical;
       min-height: 100px;
-      margin: 16px 0;
+      margin: 8px 0 16px;
     }
-
-    .hidden {
-      display: none;
+    .paste-area:focus {
+        outline: none;
+        border-color: var(--primary-color);
     }
-
-    .typing-indicator {
-      padding: 10px 14px;
-      background: #2c2c2e;
-      border-radius: 18px;
-      align-self: flex-start;
-      max-width: 75%;
-      border-bottom-left-radius: 4px;
-    }
-
-    .typing-dots {
-      display: flex;
-      gap: 4px;
-    }
-
-    .typing-dot {
-      width: 6px;
-      height: 6px;
-      background: #8e8e93;
-      border-radius: 50%;
-      animation: typing 1.4s infinite;
-    }
-
-    .typing-dot:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-
-    .typing-dot:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-
-    @keyframes typing {
-      0%, 60%, 100% {
-        opacity: 0.3;
-      }
-      30% {
-        opacity: 1;
-      }
-    }
-
-    /* Mobile optimizations */
-    @media (max-width: 500px) {
-      .modal-content {
-        margin: 20px;
-        padding: 20px;
-      }
-      
-      .message {
-        max-width: 85%;
-        font-size: 0.95rem;
-      }
-      
-      #messageInput {
-        font-size: 16px; /* Prevents zoom on focus in iOS */
-      }
-    }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -382,7 +325,7 @@
 
   <div class="input-container">
     <div class="input-area">
-      <label for="photoInput" class="photo-btn" title="Send photo">📷</label>
+      <label for="photoInput" class="photo-btn" title="Send photo">📎</label>
       <input type="file" id="photoInput" accept="image/*" />
       <textarea id="messageInput" rows="1" placeholder="Message"></textarea>
       <button id="sendBtn" disabled>➤</button>
@@ -392,373 +335,446 @@
   <!-- Connection Setup Modal -->
   <div id="setupModal" class="modal">
     <div class="modal-content">
-      <h2>Start Private Chat</h2>
-      <p>Choose how to connect:</p>
-      
-      <div class="btn-group">
-        <button class="btn" id="createOfferBtn">Create Room</button>
-        <button class="btn btn-secondary" id="joinRoomBtn">Join Room</button>
+      <div id="initialStep">
+        <h2>Start Private Chat</h2>
+        <p>This chat is end-to-end encrypted. No server stores your messages. Choose how to connect:</p>
+        <div class="btn-group">
+          <button class="btn" id="createRoomBtn">Create Room</button>
+          <button class="btn btn-secondary" id="joinRoomBtn">Join Room</button>
+        </div>
       </div>
       
       <div id="offerStep" class="hidden">
-        <p>Share this code with your friend:</p>
-        <div id="offerCode" class="code-container"></div>
+        <h2>1. Share Offer Code</h2>
+        <p>Copy this entire code and send it to your friend (e.g., via text message).</p>
+        <div id="offerCode" class="code-container" tabindex="0"></div>
         <button class="btn" id="copyOfferBtn">Copy Code</button>
-        <p style="margin-top: 16px;">Waiting for them to join...</p>
+        <h2 style="margin-top:24px;">2. Paste Answer Code</h2>
+        <p>Once your friend sends their code back, paste it here to connect.</p>
+        <textarea id="offerAnswerPaste" class="paste-area" placeholder="Paste answer code here..."></textarea>
+        <button class="btn" id="connectOfferBtn">Connect</button>
       </div>
       
       <div id="answerStep" class="hidden">
-        <p>Paste the room code here:</p>
-        <textarea id="pasteArea" class="paste-area" placeholder="Paste room code here..."></textarea>
-        <button class="btn" id="joinBtn">Join Chat</button>
+        <h2>1. Paste Offer Code</h2>
+        <p>Paste the code your friend sent you here.</p>
+        <textarea id="answerOfferPaste" class="paste-area" placeholder="Paste offer code here..."></textarea>
+        <button class="btn" id="createAnswerBtn">Create Answer Code</button>
+        
+        <div id="answerGenerated" class="hidden">
+            <h2 style="margin-top:24px;">2. Share Answer Code</h2>
+            <p>Success! Now copy this new code and send it back to your friend to complete the connection.</p>
+            <div id="answerCode" class="code-container" tabindex="0"></div>
+            <button class="btn" id="copyAnswerBtn">Copy Answer</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <script>
-    class WebRTCChat {
-      constructor() {
+  <!-- Generic Info/Confirm Modal -->
+  <div id="infoModal" class="modal">
+      <div class="modal-content">
+          <h2 id="infoModalTitle"></h2>
+          <p id="infoModalText"></p>
+          <div id="infoModalButtons" class="btn-group">
+             <!-- Buttons will be injected here -->
+          </div>
+      </div>
+  </div>
+
+
+<script>
+class WebRTCChat {
+    constructor() {
         this.pc = null;
         this.dataChannel = null;
         this.isConnected = false;
-        this.isOfferer = false;
         
         this.initElements();
         this.initEventListeners();
         this.showSetupModal();
-      }
+    }
 
-      initElements() {
+    // --- ELEMENT INITIALIZATION ---
+    initElements() {
+        // Main UI
         this.chat = document.getElementById('chat');
         this.messageInput = document.getElementById('messageInput');
         this.sendBtn = document.getElementById('sendBtn');
         this.photoInput = document.getElementById('photoInput');
         this.statusText = document.getElementById('statusText');
-        this.setupModal = document.getElementById('setupModal');
-        
-        // Modal elements
-        this.createOfferBtn = document.getElementById('createOfferBtn');
-        this.joinRoomBtn = document.getElementById('joinRoomBtn');
-        this.offerStep = document.getElementById('offerStep');
-        this.answerStep = document.getElementById('answerStep');
-        this.offerCode = document.getElementById('offerCode');
-        this.copyOfferBtn = document.getElementById('copyOfferBtn');
-        this.pasteArea = document.getElementById('pasteArea');
-        this.joinBtn = document.getElementById('joinBtn');
         this.infoBtn = document.getElementById('infoBtn');
         this.newChatBtn = document.getElementById('newChatBtn');
-      }
 
-      initEventListeners() {
+        // Setup Modal
+        this.setupModal = document.getElementById('setupModal');
+        this.initialStep = document.getElementById('initialStep');
+        this.createRoomBtn = document.getElementById('createRoomBtn');
+        this.joinRoomBtn = document.getElementById('joinRoomBtn');
+        
+        // Offer(er) Flow
+        this.offerStep = document.getElementById('offerStep');
+        this.offerCode = document.getElementById('offerCode');
+        this.copyOfferBtn = document.getElementById('copyOfferBtn');
+        this.offerAnswerPaste = document.getElementById('offerAnswerPaste');
+        this.connectOfferBtn = document.getElementById('connectOfferBtn');
+
+        // Answer(er) Flow
+        this.answerStep = document.getElementById('answerStep');
+        this.answerOfferPaste = document.getElementById('answerOfferPaste');
+        this.createAnswerBtn = document.getElementById('createAnswerBtn');
+        this.answerGenerated = document.getElementById('answerGenerated');
+        this.answerCode = document.getElementById('answerCode');
+        this.copyAnswerBtn = document.getElementById('copyAnswerBtn');
+
+        // Generic Modal
+        this.infoModal = document.getElementById('infoModal');
+        this.infoModalTitle = document.getElementById('infoModalTitle');
+        this.infoModalText = document.getElementById('infoModalText');
+        this.infoModalButtons = document.getElementById('infoModalButtons');
+    }
+
+    // --- EVENT LISTENERS ---
+    initEventListeners() {
         // Input handlers
         this.messageInput.addEventListener('input', () => this.updateSendBtn());
-        this.photoInput.addEventListener('change', () => this.updateSendBtn());
+        this.photoInput.addEventListener('change', (e) => this.handlePhotoInputChange(e));
         this.sendBtn.addEventListener('click', () => this.sendMessage());
         
         // Enter key to send
         this.messageInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            if (!this.sendBtn.disabled) this.sendMessage();
-          }
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!this.sendBtn.disabled) this.sendMessage();
+            }
         });
 
         // Auto-resize textarea
-        this.messageInput.addEventListener('input', () => {
-          this.messageInput.style.height = 'auto';
-          this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 100) + 'px';
-        });
+        this.messageInput.addEventListener('input', () => this.autoResizeInput());
 
-        // Modal handlers
-        this.createOfferBtn.addEventListener('click', () => this.createOffer());
-        this.joinRoomBtn.addEventListener('click', () => this.showJoinStep());
-        this.copyOfferBtn.addEventListener('click', () => this.copyOffer());
-        this.joinBtn.addEventListener('click', () => this.joinRoom());
+        // Header buttons
         this.infoBtn.addEventListener('click', () => this.showInfo());
-        this.newChatBtn.addEventListener('click', () => this.newChat());
-      }
+        this.newChatBtn.addEventListener('click', () => this.confirmNewChat());
 
-      updateSendBtn() {
-        const hasText = this.messageInput.value.trim();
+        // Setup Modal buttons
+        this.createRoomBtn.addEventListener('click', () => this.createOffer());
+        this.joinRoomBtn.addEventListener('click', () => this.showJoinStep());
+        this.copyOfferBtn.addEventListener('click', () => this.copyToClipboard(this.offerCode.textContent, this.copyOfferBtn));
+        this.connectOfferBtn.addEventListener('click', () => this.completeOffer());
+        
+        this.createAnswerBtn.addEventListener('click', () => this.createAnswer());
+        this.copyAnswerBtn.addEventListener('click', () => this.copyToClipboard(this.answerCode.textContent, this.copyAnswerBtn));
+    }
+
+    // --- UI & STATE MANAGEMENT ---
+    updateSendBtn() {
+        const hasText = this.messageInput.value.trim().length > 0;
         const hasPhoto = this.photoInput.files.length > 0;
-        this.sendBtn.disabled = !hasText && !hasPhoto;
-      }
+        this.sendBtn.disabled = !this.isConnected || (!hasText && !hasPhoto);
+    }
 
-      updateStatus(text, className = '') {
+    autoResizeInput() {
+        this.messageInput.style.height = 'auto';
+        this.messageInput.style.height = `${Math.min(this.messageInput.scrollHeight, 100)}px`;
+    }
+
+    updateStatus(text, className = '') {
         this.statusText.textContent = text;
         this.statusText.className = className;
-      }
+    }
 
-      addMessage(content, from = 'other', isImage = false) {
+    addMessage(content, type, isImage = false) {
         const msgDiv = document.createElement('div');
-        msgDiv.classList.add('message', from);
+        msgDiv.classList.add('message', type);
         
         if (isImage) {
-          const img = document.createElement('img');
-          img.src = content;
-          img.alt = 'Shared image';
-          img.onclick = () => this.openImageModal(content);
-          msgDiv.appendChild(img);
+            const img = document.createElement('img');
+            img.src = content;
+            img.alt = 'Shared image';
+            img.onload = () => this.scrollToBottom();
+            msgDiv.appendChild(img);
         } else {
-          msgDiv.textContent = content;
+            // Sanitize text content to prevent HTML injection
+            const textNode = document.createTextNode(content);
+            msgDiv.appendChild(textNode);
         }
         
         this.chat.appendChild(msgDiv);
+        this.scrollToBottom();
+    }
+
+    scrollToBottom() {
         this.chat.scrollTop = this.chat.scrollHeight;
-      }
+    }
 
-      openImageModal(src) {
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.innerHTML = `
-          <div style="position: relative; max-width: 90%; max-height: 90%;">
-            <img src="${src}" style="max-width: 100%; max-height: 100%; border-radius: 12px;">
-            <button style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); border: none; color: white; border-radius: 50%; width: 32px; height: 32px; cursor: pointer;">✕</button>
-          </div>
-        `;
-        
-        modal.onclick = (e) => {
-          if (e.target === modal || e.target.tagName === 'BUTTON') {
-            document.body.removeChild(modal);
-          }
-        };
-        
-        document.body.appendChild(modal);
-      }
+    showSetupModal() {
+        this.setupModal.classList.add('visible');
+    }
 
-      async sendMessage() {
-        if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
-          this.addMessage('❌ Not connected', 'other');
-          return;
+    hideSetupModal() {
+        this.setupModal.classList.remove('visible');
+    }
+
+    // --- CORE WebRTC LOGIC ---
+    async setupPeerConnection() {
+        // Close any existing connection
+        if (this.pc) {
+            this.pc.close();
         }
 
-        // Handle photo
-        if (this.photoInput.files.length > 0) {
-          const file = this.photoInput.files[0];
-          
-          // Check file size (limit to 5MB)
-          if (file.size > 5 * 1024 * 1024) {
-            this.addMessage('❌ Image too large (max 5MB)', 'other');
-            return;
-          }
-          
-          const reader = new FileReader();
-          reader.onload = () => {
-            const base64 = reader.result;
-            this.dataChannel.send(JSON.stringify({type: 'image', data: base64}));
-            this.addMessage(base64, 'me', true);
-          };
-          reader.readAsDataURL(file);
-          this.photoInput.value = '';
-        }
-
-        // Handle text
-        if (this.messageInput.value.trim()) {
-          const message = this.messageInput.value.trim();
-          this.dataChannel.send(message);
-          this.addMessage(message, 'me');
-          this.messageInput.value = '';
-          this.messageInput.style.height = 'auto';
-        }
-
-        this.updateSendBtn();
-      }
-
-      setupPeerConnection() {
         this.pc = new RTCPeerConnection({
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
         });
 
         this.pc.oniceconnectionstatechange = () => {
-          const state = this.pc.iceConnectionState;
-          switch (state) {
-            case 'connected':
-            case 'completed':
-              this.isConnected = true;
-              this.updateStatus('Connected', 'status-connected');
-              break;
-            case 'disconnected':
-              this.updateStatus('Reconnecting...', 'status-connecting');
-              break;
-            case 'failed':
-            case 'closed':
-              this.isConnected = false;
-              this.updateStatus('Disconnected', 'status-disconnected');
-              break;
-            default:
-              this.updateStatus('Connecting...', 'status-connecting');
-          }
-        };
-      }
-
-      setupDataChannel(channel) {
-        this.dataChannel = channel;
-        
-        channel.onopen = () => {
-          this.updateStatus('Connected', 'status-connected');
-          this.hideSetupModal();
-          this.addMessage('🎉 Chat connected! Send messages or photos.', 'other');
-        };
-
-        channel.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'image') {
-              this.addMessage(data.data, 'other', true);
+            const state = this.pc.iceConnectionState;
+            switch (state) {
+                case 'connected':
+                case 'completed':
+                    if (!this.isConnected) {
+                        this.isConnected = true;
+                        this.updateStatus('Connected', 'status-connected');
+                        this.hideSetupModal();
+                        this.addMessage('🎉 Chat connected! Messages are end-to-end encrypted.', 'system');
+                        this.updateSendBtn();
+                    }
+                    break;
+                case 'disconnected':
+                    this.updateStatus('Reconnecting...', 'status-connecting');
+                    break;
+                case 'failed':
+                case 'closed':
+                    if (this.isConnected) {
+                        this.isConnected = false;
+                        this.updateStatus('Disconnected', 'status-disconnected');
+                        this.addMessage('❌ Chat disconnected.', 'system');
+                        this.updateSendBtn();
+                    }
+                    break;
+                default:
+                    this.updateStatus(`Connecting... (${state})`, 'status-connecting');
             }
-          } catch {
-            this.addMessage(event.data, 'other');
-          }
         };
 
-        channel.onclose = () => {
-          this.updateStatus('Disconnected', 'status-disconnected');
-          this.addMessage('❌ Chat disconnected', 'other');
-        };
-      }
-
-      async createOffer() {
-        this.setupPeerConnection();
-        this.isOfferer = true;
-        
-        this.dataChannel = this.pc.createDataChannel('chat');
-        this.setupDataChannel(this.dataChannel);
-        
-        const offer = await this.pc.createOffer();
-        await this.pc.setLocalDescription(offer);
-        
-        // Wait for ICE gathering
-        await this.waitForIceGathering();
-        
-        this.offerCode.textContent = JSON.stringify(this.pc.localDescription);
-        this.showOfferStep();
-        
-        this.updateStatus('Waiting for join...', 'status-connecting');
-        
-        // Auto-check for answer
-        this.checkForAnswer();
-      }
-
-      async checkForAnswer() {
-        // This is a simplified version - in a real app you'd use a signaling server
-        // For now, we'll wait for manual paste
-        setInterval(() => {
-          if (this.pc && this.pc.remoteDescription) {
-            return; // Already connected
-          }
-        }, 1000);
-      }
-
-      showOfferStep() {
-        this.offerStep.classList.remove('hidden');
-        this.createOfferBtn.style.display = 'none';
-        this.joinRoomBtn.style.display = 'none';
-      }
-
-      showJoinStep() {
-        this.answerStep.classList.remove('hidden');
-        this.createOfferBtn.style.display = 'none';
-        this.joinRoomBtn.style.display = 'none';
-      }
-
-      async copyOffer() {
-        try {
-          await navigator.clipboard.writeText(this.offerCode.textContent);
-          this.copyOfferBtn.textContent = 'Copied!';
-          setTimeout(() => {
-            this.copyOfferBtn.textContent = 'Copy Code';
-          }, 2000);
-        } catch (err) {
-          // Fallback for browsers that don't support clipboard API
-          this.offerCode.select();
-          document.execCommand('copy');
-          this.copyOfferBtn.textContent = 'Copied!';
-          setTimeout(() => {
-            this.copyOfferBtn.textContent = 'Copy Code';
-          }, 2000);
-        }
-      }
-
-      async joinRoom() {
-        const offerText = this.pasteArea.value.trim();
-        if (!offerText) {
-          alert('Please paste the room code');
-          return;
-        }
-
-        try {
-          this.setupPeerConnection();
-          
-          const offer = JSON.parse(offerText);
-          await this.pc.setRemoteDescription(offer);
-          
-          this.pc.ondatachannel = (event) => {
-            this.setupDataChannel(event.channel);
-          };
-          
-          const answer = await this.pc.createAnswer();
-          await this.pc.setLocalDescription(answer);
-          
-          await this.waitForIceGathering();
-          
-          // In a real app, you'd send this answer back through the signaling server
-          // For demo purposes, we'll show it for manual copying
-          const answerText = JSON.stringify(this.pc.localDescription);
-          
-          // Auto-copy answer to clipboard
-          try {
-            await navigator.clipboard.writeText(answerText);
-            alert('Answer copied to clipboard! Send this back to your friend.');
-          } catch {
-            prompt('Send this answer back to your friend:', answerText);
-          }
-          
-          this.updateStatus('Connecting...', 'status-connecting');
-          
-        } catch (err) {
-          alert('Invalid room code. Please check and try again.');
-          console.error(err);
-        }
-      }
-
-      async waitForIceGathering() {
-        return new Promise((resolve) => {
-          if (this.pc.iceGatheringState === 'complete') {
-            resolve();
-          } else {
-            this.pc.addEventListener('icegatheringstatechange', () => {
-              if (this.pc.iceGatheringState === 'complete') {
-                resolve();
-              }
-            });
-          }
+        // This promise resolves when ICE gathering is complete.
+        return new Promise(resolve => {
+            this.pc.onicecandidate = (event) => {
+                if (!event.candidate) {
+                    resolve();
+                }
+            };
         });
-      }
-
-      showSetupModal() {
-        this.setupModal.classList.remove('hidden');
-      }
-
-      hideSetupModal() {
-        this.setupModal.classList.add('hidden');
-      }
-
-      showInfo() {
-        alert('This is a private WebRTC chat. Messages are sent directly between devices without going through any server. One person creates a room, shares the code, and the other joins.');
-      }
-
-      newChat() {
-        if (confirm('Start a new chat? This will disconnect the current conversation.')) {
-          location.reload();
-        }
-      }
     }
 
-    // Initialize the chat app
-    const chat = new WebRTCChat();
-  </script>
+    setupDataChannel(channel) {
+        this.dataChannel = channel;
+        this.dataChannel.onmessage = (event) => this.handleDataChannelMessage(event);
+        this.dataChannel.onopen = () => console.log("Data channel is open");
+        this.dataChannel.onclose = () => console.log("Data channel is closed");
+    }
+
+    handleDataChannelMessage(event) {
+        try {
+            const message = JSON.parse(event.data);
+            if (message.type === 'image' && message.payload) {
+                this.addMessage(message.payload, 'other', true);
+            } else if (message.type === 'text' && message.payload) {
+                this.addMessage(message.payload, 'other');
+            }
+        } catch (e) {
+            // For backward compatibility with simple text messages
+            this.addMessage(event.data, 'other');
+        }
+    }
+
+    async sendMessage() {
+        if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
+            this.addMessage('Cannot send message. Not connected.', 'system');
+            return;
+        }
+
+        const text = this.messageInput.value.trim();
+        const file = this.photoInput.files[0];
+
+        if (text) {
+            const message = { type: 'text', payload: text };
+            this.dataChannel.send(JSON.stringify(message));
+            this.addMessage(text, 'me');
+            this.messageInput.value = '';
+            this.autoResizeInput();
+        }
+        
+        if (file) {
+            this.sendImage(file);
+            this.photoInput.value = ''; // Clear file input
+        }
+
+        this.updateSendBtn();
+    }
+    
+    handlePhotoInputChange(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.addMessage(`Preparing to send ${file.name}...`, 'system');
+      }
+      this.updateSendBtn();
+    }
+    
+    sendImage(file) {
+        if (file.size > 16 * 1024 * 1024) { // 16MB limit for data channels
+            this.addMessage(`❌ Image too large (max 16MB). File is ${ (file.size / 1024 / 1024).toFixed(2) }MB.`, 'system');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const base64data = reader.result;
+            const message = { type: 'image', payload: base64data };
+            this.dataChannel.send(JSON.stringify(message));
+            this.addMessage(base64data, 'me', true);
+        };
+        reader.onerror = () => this.addMessage('❌ Error reading file.', 'system');
+        reader.readAsDataURL(file);
+    }
+    
+    // --- SIGNALING FLOW (MANUAL) ---
+
+    // OFFERER: Step 1
+    async createOffer() {
+        this.initialStep.classList.add('hidden');
+        this.offerStep.classList.remove('hidden');
+        this.updateStatus('Creating room...', 'status-connecting');
+
+        const iceGatheringPromise = this.setupPeerConnection();
+        
+        this.pc.ondatachannel = (event) => this.setupDataChannel(event.channel);
+        this.dataChannel = this.pc.createDataChannel('chat');
+        this.setupDataChannel(this.dataChannel);
+
+        const offer = await this.pc.createOffer();
+        await this.pc.setLocalDescription(offer);
+
+        await iceGatheringPromise; // Wait for all ICE candidates
+
+        this.offerCode.textContent = JSON.stringify(this.pc.localDescription);
+        this.updateStatus('Waiting for friend to join...', 'status-connecting');
+    }
+
+    // OFFERER: Step 2
+    async completeOffer() {
+        const answerText = this.offerAnswerPaste.value.trim();
+        if (!answerText) {
+            this.showInfoModal('Error', 'Please paste the answer code from your friend.');
+            return;
+        }
+        try {
+            const answer = JSON.parse(answerText);
+            await this.pc.setRemoteDescription(new RTCSessionDescription(answer));
+            // Connection will be established by oniceconnectionstatechange
+        } catch (e) {
+            console.error(e);
+            this.showInfoModal('Invalid Code', 'The answer code seems to be invalid. Please copy it again carefully.');
+        }
+    }
+
+    // ANSWERER: Step 1
+    showJoinStep() {
+        this.initialStep.classList.add('hidden');
+        this.answerStep.classList.remove('hidden');
+        this.updateStatus('Ready to join a room...', 'status-connecting');
+    }
+
+    // ANSWERER: Step 2
+    async createAnswer() {
+        const offerText = this.answerOfferPaste.value.trim();
+        if (!offerText) {
+            this.showInfoModal('Error', 'Please paste the offer code from your friend.');
+            return;
+        }
+        try {
+            const offer = JSON.parse(offerText);
+            const iceGatheringPromise = this.setupPeerConnection();
+
+            this.pc.ondatachannel = (event) => this.setupDataChannel(event.channel);
+
+            await this.pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await this.pc.createAnswer();
+            await this.pc.setLocalDescription(answer);
+
+            await iceGatheringPromise; // Wait for all ICE candidates
+
+            this.answerCode.textContent = JSON.stringify(this.pc.localDescription);
+            this.answerGenerated.classList.remove('hidden');
+            this.updateStatus('Answer created. Send it back.', 'status-connecting');
+
+        } catch (e) {
+            console.error(e);
+            this.showInfoModal('Invalid Code', 'The offer code seems to be invalid. Please copy it again carefully.');
+        }
+    }
+    
+    // --- UTILITY & HELPER FUNCTIONS ---
+    async copyToClipboard(text, buttonElement) {
+        try {
+            await navigator.clipboard.writeText(text);
+            const originalText = buttonElement.textContent;
+            buttonElement.textContent = 'Copied!';
+            setTimeout(() => {
+                buttonElement.textContent = originalText;
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+            this.showInfoModal('Copy Failed', 'Could not copy to clipboard. Please copy the text manually.');
+        }
+    }
+
+    showInfoModal(title, text, buttons = [{ text: 'OK', class: 'btn', action: 'close' }]) {
+        this.infoModalTitle.textContent = title;
+        this.infoModalText.textContent = text;
+        this.infoModalButtons.innerHTML = ''; // Clear previous buttons
+
+        buttons.forEach(btnInfo => {
+            const button = document.createElement('button');
+            button.textContent = btnInfo.text;
+            button.className = btnInfo.class;
+            button.onclick = () => {
+                this.infoModal.classList.remove('visible');
+                if (btnInfo.action && typeof btnInfo.action === 'function') {
+                    btnInfo.action();
+                }
+            };
+            this.infoModalButtons.appendChild(button);
+        });
+
+        this.infoModal.classList.add('visible');
+    }
+    
+    showInfo() {
+        this.showInfoModal(
+            'How It Works', 
+            'This is a private, serverless chat application using WebRTC. Your messages are sent directly to your peer, encrypted end-to-end. To connect, one person creates a room and sends the "Offer Code". The other person pastes that code to generate an "Answer Code", which they send back. The first person then pastes the answer to establish the connection.'
+        );
+    }
+    
+    confirmNewChat() {
+        this.showInfoModal(
+            'Start New Chat?',
+            'Are you sure you want to start a new chat? This will permanently disconnect the current session.',
+            [
+                { text: 'Cancel', class: 'btn btn-secondary', action: 'close' },
+                { text: 'Yes, New Chat', class: 'btn', action: () => location.reload() }
+            ]
+        );
+    }
+}
+
+// Initialize the chat app when the DOM is ready
+window.addEventListener('DOMContentLoaded', () => {
+    new WebRTCChat();
+});
+</script>
 </body>
 </html>
