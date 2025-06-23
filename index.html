@@ -657,6 +657,8 @@ class WebRTCChat {
     setupDataChannel(channel) {
         this.dataChannel = channel;
         // Ensure binaryType is 'arraybuffer' for efficient file transfer
+        // Note: For Base64 encoding/decoding, we can keep binaryType as default ('blob' or 'arraybuffer')
+        // but since we're sending JSON strings, it doesn't strictly matter for the 'onmessage' event data type.
         this.dataChannel.binaryType = 'arraybuffer'; 
         this.dataChannel.onmessage = (event) => this.handleDataChannelMessage(event);
         this.dataChannel.onopen = () => console.log("Data channel is open");
@@ -665,16 +667,7 @@ class WebRTCChat {
     }
 
     handleDataChannelMessage(event) {
-        // DataChannel can send ArrayBuffer directly or string.
-        // We need to check if it's an ArrayBuffer (for file chunks) or a string (for JSON messages)
-        if (event.data instanceof ArrayBuffer) {
-            // This is a file chunk. We expect the previous message to be the metadata.
-            // Or, more robustly, embed metadata into each chunk (e.g., fileId, chunkIndex).
-            // For this fixed version, we'll embed metadata as JSON for all types.
-            console.warn("Received unexpected ArrayBuffer without JSON metadata. This might indicate an issue with message structure.");
-            return;
-        }
-
+        // All messages are now JSON strings, so no need for ArrayBuffer check at this level
         const message = JSON.parse(event.data);
         switch (message.type) {
             case 'text':
@@ -695,10 +688,15 @@ class WebRTCChat {
             case 'file-chunk':
                 const fileInfo = this.receivedFiles[message.fileId];
                 if (fileInfo) {
-                    fileInfo.chunks[message.chunkIndex] = message.payload; // Store the ArrayBuffer
+                    // Convert Base64 payload back to ArrayBuffer
+                    const binaryString = atob(message.payload); // Decode Base64 string
+                    const len = binaryString.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    fileInfo.chunks[message.chunkIndex] = bytes.buffer; // Store the ArrayBuffer
                     fileInfo.receivedChunks++;
-                    // Optional: Update progress on the UI for the receiving file
-                    // fileInfo.msgDiv.textContent = `Receiving ${fileInfo.metadata.fileName}: ${Math.floor((fileInfo.receivedChunks / fileInfo.metadata.totalChunks) * 100)}%`;
                 }
                 break;
             case 'file-end':
@@ -813,38 +811,32 @@ class WebRTCChat {
             // Send chunks
             for (let i = 0; i < totalChunks; i++) {
                 const offset = i * WebRTCChat.CHUNK_SIZE;
-                const chunk = arrayBuffer.slice(offset, offset + WebRTCChat.CHUNK_SIZE);
+                const chunkBuffer = arrayBuffer.slice(offset, offset + WebRTCChat.CHUNK_SIZE);
+                
+                // Convert ArrayBuffer chunk to Base64 string
+                const base64Chunk = await new Promise((resolve, reject) => {
+                    const chunkReader = new FileReader();
+                    chunkReader.onloadend = () => {
+                        // The result will be a Data URL (e.g., "data:application/octet-stream;base64,...")
+                        // We only need the Base64 part after the comma.
+                        resolve(chunkReader.result.split(',')[1]); 
+                    };
+                    chunkReader.onerror = reject;
+                    chunkReader.readAsDataURL(new Blob([chunkBuffer]));
+                });
+
                 const chunkMessage = {
                     type: 'file-chunk',
                     fileId: fileId,
                     chunkIndex: i,
-                    payload: chunk // Send ArrayBuffer directly
+                    payload: base64Chunk // Base64 string payload
                 };
                 try {
-                    // Send chunk metadata as JSON string, then the ArrayBuffer.
-                    // DataChannel.send can take a string or ArrayBuffer/Blob.
-                    // For a robust protocol, it's better to send JSON string with metadata
-                    // AND then the raw binary data. However, DataChannel.send can't chain.
-                    // So, we stringify the payload that *contains* the chunk, which Base64 encodes it.
-                    // This brings us back to Base64 issues.
-                    // A better way is to send raw ArrayBuffer chunks, and have JSON metadata sent separately.
-                    // Let's modify the chunk payload to be the ArrayBuffer and send the metadata as part of it.
-                    // The `payload` will be the ArrayBuffer. The `type` determines how it's handled.
-
                     // Wait for data channel buffer to clear if it's getting full
                     while (this.dataChannel.bufferedAmount > this.dataChannel.bufferedAmountLowThreshold) {
                         await new Promise(resolve => setTimeout(resolve, 100)); // Wait a bit
                     }
-                    this.dataChannel.send(JSON.stringify({
-                        type: 'file-chunk-meta', // Indicate this message is metadata for a chunk
-                        fileId: fileId,
-                        chunkIndex: i,
-                        // No payload here, payload will be sent separately
-                    }));
-                    this.dataChannel.send(chunk); // Send the actual binary chunk
-                    
-                    // Update sender's status with progress
-                    // document.getElementById(`status-${fileId}`).textContent = `Sent: ${i + 1}/${totalChunks}`;
+                    this.dataChannel.send(JSON.stringify(chunkMessage)); // Send the JSON message with Base64 chunk
                 } catch (error) {
                     console.error(`Error sending chunk ${i} for file ${fileId}:`, error);
                     this.updateMessageContent(fileId, `Failed to send chunk ${i} of ${file.name}. Transfer aborted.`);
