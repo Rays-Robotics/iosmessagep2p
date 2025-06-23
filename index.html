@@ -118,6 +118,7 @@
       align-self: flex-end;
       color: white;
       border-bottom-right-radius: 4px;
+      padding-right: 30px; /* Space for status indicator */
     }
     .message.other {
       background: var(--surface-color-2);
@@ -131,6 +132,7 @@
         color: var(--text-secondary);
         font-size: 0.8rem;
         text-align: center;
+        border-radius: 12px;
     }
     .message img {
       max-width: 100%;
@@ -140,6 +142,23 @@
       object-fit: cover;
       display: block;
     }
+
+    /* Message Status Indicator */
+    .message-status {
+        position: absolute;
+        bottom: 5px;
+        right: 8px;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1;
+    }
+    .message.has-image .message-status { /* Adjust for images */
+        color: white;
+        text-shadow: 0 0 3px rgba(0,0,0,0.7);
+        right: 8px;
+        bottom: 8px;
+    }
+
 
     /* Input Area */
     .input-container {
@@ -389,7 +408,9 @@ class WebRTCChat {
         this.pc = null;
         this.dataChannel = null;
         this.isConnected = false;
-        
+        this.pendingMessages = {}; // To track messages waiting for ACK
+        this.notificationPermission = 'default';
+
         this.initElements();
         this.initEventListeners();
         this.showSetupModal();
@@ -483,9 +504,12 @@ class WebRTCChat {
         this.statusText.className = className;
     }
 
-    addMessage(content, type, isImage = false) {
+    addMessage(content, type, isImage = false, messageId = null) {
         const msgDiv = document.createElement('div');
         msgDiv.classList.add('message', type);
+        if (isImage) {
+          msgDiv.classList.add('has-image');
+        }
         
         if (isImage) {
             const img = document.createElement('img');
@@ -494,9 +518,15 @@ class WebRTCChat {
             img.onload = () => this.scrollToBottom();
             msgDiv.appendChild(img);
         } else {
-            // Sanitize text content to prevent HTML injection
             const textNode = document.createTextNode(content);
             msgDiv.appendChild(textNode);
+        }
+
+        if (type === 'me' && messageId) {
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'message-status';
+            statusSpan.id = `status-${messageId}`;
+            msgDiv.appendChild(statusSpan);
         }
         
         this.chat.appendChild(msgDiv);
@@ -517,10 +547,7 @@ class WebRTCChat {
 
     // --- CORE WebRTC LOGIC ---
     async setupPeerConnection() {
-        // Close any existing connection
-        if (this.pc) {
-            this.pc.close();
-        }
+        if (this.pc) this.pc.close();
 
         this.pc = new RTCPeerConnection({
             iceServers: [
@@ -540,11 +567,10 @@ class WebRTCChat {
                         this.hideSetupModal();
                         this.addMessage('🎉 Chat connected! Messages are end-to-end encrypted.', 'system');
                         this.updateSendBtn();
+                        this.requestNotificationPermission();
                     }
                     break;
-                case 'disconnected':
-                    this.updateStatus('Reconnecting...', 'status-connecting');
-                    break;
+                case 'disconnected': this.updateStatus('Reconnecting...', 'status-connecting'); break;
                 case 'failed':
                 case 'closed':
                     if (this.isConnected) {
@@ -554,18 +580,12 @@ class WebRTCChat {
                         this.updateSendBtn();
                     }
                     break;
-                default:
-                    this.updateStatus(`Connecting... (${state})`, 'status-connecting');
+                default: this.updateStatus(`Connecting... (${state})`, 'status-connecting');
             }
         };
 
-        // This promise resolves when ICE gathering is complete.
         return new Promise(resolve => {
-            this.pc.onicecandidate = (event) => {
-                if (!event.candidate) {
-                    resolve();
-                }
-            };
+            this.pc.onicecandidate = (event) => !event.candidate && resolve();
         });
     }
 
@@ -577,16 +597,26 @@ class WebRTCChat {
     }
 
     handleDataChannelMessage(event) {
-        try {
-            const message = JSON.parse(event.data);
-            if (message.type === 'image' && message.payload) {
-                this.addMessage(message.payload, 'other', true);
-            } else if (message.type === 'text' && message.payload) {
+        const message = JSON.parse(event.data);
+        switch (message.type) {
+            case 'text':
                 this.addMessage(message.payload, 'other');
-            }
-        } catch (e) {
-            // For backward compatibility with simple text messages
-            this.addMessage(event.data, 'other');
+                this.sendAck(message.id);
+                this.showNotification('New Message', message.payload);
+                break;
+            case 'image':
+                this.addMessage(message.payload, 'other', true);
+                this.sendAck(message.id);
+                this.showNotification('New Image Received', 'Your friend sent you an image or GIF.');
+                break;
+            case 'ack':
+                const ackId = message.payload;
+                if (this.pendingMessages[ackId]) {
+                    const statusEl = document.getElementById(`status-${ackId}`);
+                    if (statusEl) statusEl.textContent = '✓✓'; // Delivered
+                    delete this.pendingMessages[ackId];
+                }
+                break;
         }
     }
 
@@ -600,16 +630,19 @@ class WebRTCChat {
         const file = this.photoInput.files[0];
 
         if (text) {
-            const message = { type: 'text', payload: text };
+            const messageId = crypto.randomUUID();
+            const message = { type: 'text', payload: text, id: messageId };
             this.dataChannel.send(JSON.stringify(message));
-            this.addMessage(text, 'me');
+            this.addMessage(text, 'me', false, messageId);
+            document.getElementById(`status-${messageId}`).textContent = '✓'; // Sent
+            this.pendingMessages[messageId] = true;
             this.messageInput.value = '';
             this.autoResizeInput();
         }
         
         if (file) {
             this.sendImage(file);
-            this.photoInput.value = ''; // Clear file input
+            this.photoInput.value = '';
         }
 
         this.updateSendBtn();
@@ -617,32 +650,52 @@ class WebRTCChat {
     
     handlePhotoInputChange(event) {
       const file = event.target.files[0];
-      if (file) {
-        this.addMessage(`Preparing to send ${file.name}...`, 'system');
-      }
+      if (file) this.addMessage(`Preparing to send ${file.name}...`, 'system');
       this.updateSendBtn();
     }
     
     sendImage(file) {
-        if (file.size > 16 * 1024 * 1024) { // 16MB limit for data channels
+        if (file.size > 16 * 1024 * 1024) { // 16MB limit
             this.addMessage(`❌ Image too large (max 16MB). File is ${ (file.size / 1024 / 1024).toFixed(2) }MB.`, 'system');
             return;
         }
 
+        const messageId = crypto.randomUUID();
         const reader = new FileReader();
         reader.onload = () => {
             const base64data = reader.result;
-            const message = { type: 'image', payload: base64data };
+            const message = { type: 'image', payload: base64data, id: messageId };
             this.dataChannel.send(JSON.stringify(message));
-            this.addMessage(base64data, 'me', true);
+            this.addMessage(base64data, 'me', true, messageId);
+            document.getElementById(`status-${messageId}`).textContent = '✓'; // Sent
+            this.pendingMessages[messageId] = true;
         };
         reader.onerror = () => this.addMessage('❌ Error reading file.', 'system');
         reader.readAsDataURL(file);
     }
     
-    // --- SIGNALING FLOW (MANUAL) ---
+    // --- SIGNALING & NOTIFICATIONS ---
 
-    // OFFERER: Step 1
+    sendAck(id) {
+        if (this.dataChannel.readyState === 'open') {
+            this.dataChannel.send(JSON.stringify({ type: 'ack', payload: id }));
+        }
+    }
+
+    async requestNotificationPermission() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            this.notificationPermission = await Notification.requestPermission();
+        } else {
+             this.notificationPermission = Notification.permission;
+        }
+    }
+
+    showNotification(title, body) {
+        if (document.hidden && this.notificationPermission === 'granted') {
+            new Notification(title, { body });
+        }
+    }
+
     async createOffer() {
         this.initialStep.classList.add('hidden');
         this.offerStep.classList.remove('hidden');
@@ -650,66 +703,49 @@ class WebRTCChat {
 
         const iceGatheringPromise = this.setupPeerConnection();
         
-        this.pc.ondatachannel = (event) => this.setupDataChannel(event.channel);
         this.dataChannel = this.pc.createDataChannel('chat');
         this.setupDataChannel(this.dataChannel);
 
         const offer = await this.pc.createOffer();
         await this.pc.setLocalDescription(offer);
-
-        await iceGatheringPromise; // Wait for all ICE candidates
+        await iceGatheringPromise;
 
         this.offerCode.textContent = JSON.stringify(this.pc.localDescription);
         this.updateStatus('Waiting for friend to join...', 'status-connecting');
     }
 
-    // OFFERER: Step 2
     async completeOffer() {
         const answerText = this.offerAnswerPaste.value.trim();
-        if (!answerText) {
-            this.showInfoModal('Error', 'Please paste the answer code from your friend.');
-            return;
-        }
+        if (!answerText) return this.showInfoModal('Error', 'Please paste the answer code from your friend.');
         try {
             const answer = JSON.parse(answerText);
             await this.pc.setRemoteDescription(new RTCSessionDescription(answer));
-            // Connection will be established by oniceconnectionstatechange
         } catch (e) {
             console.error(e);
             this.showInfoModal('Invalid Code', 'The answer code seems to be invalid. Please copy it again carefully.');
         }
     }
 
-    // ANSWERER: Step 1
     showJoinStep() {
         this.initialStep.classList.add('hidden');
         this.answerStep.classList.remove('hidden');
         this.updateStatus('Ready to join a room...', 'status-connecting');
     }
 
-    // ANSWERER: Step 2
     async createAnswer() {
         const offerText = this.answerOfferPaste.value.trim();
-        if (!offerText) {
-            this.showInfoModal('Error', 'Please paste the offer code from your friend.');
-            return;
-        }
+        if (!offerText) return this.showInfoModal('Error', 'Please paste the offer code from your friend.');
         try {
             const offer = JSON.parse(offerText);
             const iceGatheringPromise = this.setupPeerConnection();
-
             this.pc.ondatachannel = (event) => this.setupDataChannel(event.channel);
-
             await this.pc.setRemoteDescription(new RTCSessionDescription(offer));
             const answer = await this.pc.createAnswer();
             await this.pc.setLocalDescription(answer);
-
-            await iceGatheringPromise; // Wait for all ICE candidates
-
+            await iceGatheringPromise;
             this.answerCode.textContent = JSON.stringify(this.pc.localDescription);
             this.answerGenerated.classList.remove('hidden');
             this.updateStatus('Answer created. Send it back.', 'status-connecting');
-
         } catch (e) {
             console.error(e);
             this.showInfoModal('Invalid Code', 'The offer code seems to be invalid. Please copy it again carefully.');
@@ -722,11 +758,8 @@ class WebRTCChat {
             await navigator.clipboard.writeText(text);
             const originalText = buttonElement.textContent;
             buttonElement.textContent = 'Copied!';
-            setTimeout(() => {
-                buttonElement.textContent = originalText;
-            }, 2000);
+            setTimeout(() => { buttonElement.textContent = originalText; }, 2000);
         } catch (err) {
-            console.error('Failed to copy: ', err);
             this.showInfoModal('Copy Failed', 'Could not copy to clipboard. Please copy the text manually.');
         }
     }
@@ -734,7 +767,7 @@ class WebRTCChat {
     showInfoModal(title, text, buttons = [{ text: 'OK', class: 'btn', action: 'close' }]) {
         this.infoModalTitle.textContent = title;
         this.infoModalText.textContent = text;
-        this.infoModalButtons.innerHTML = ''; // Clear previous buttons
+        this.infoModalButtons.innerHTML = '';
 
         buttons.forEach(btnInfo => {
             const button = document.createElement('button');
@@ -742,9 +775,7 @@ class WebRTCChat {
             button.className = btnInfo.class;
             button.onclick = () => {
                 this.infoModal.classList.remove('visible');
-                if (btnInfo.action && typeof btnInfo.action === 'function') {
-                    btnInfo.action();
-                }
+                if (btnInfo.action && typeof btnInfo.action === 'function') btnInfo.action();
             };
             this.infoModalButtons.appendChild(button);
         });
@@ -762,7 +793,7 @@ class WebRTCChat {
     confirmNewChat() {
         this.showInfoModal(
             'Start New Chat?',
-            'Are you sure you want to start a new chat? This will permanently disconnect the current session.',
+            'Are you sure? This will permanently disconnect the current session.',
             [
                 { text: 'Cancel', class: 'btn btn-secondary', action: 'close' },
                 { text: 'Yes, New Chat', class: 'btn', action: () => location.reload() }
